@@ -21,6 +21,12 @@ let nextId2 = () => {
 /* Util */
 let str = ReasonReact.stringToElement;
 
+let valueFromEvent = evt : string => (
+                                       evt
+                                       |> ReactEventRe.Form.target
+                                       |> ReactDOMRe.domElementToObj
+                                     )##value;
+
 let nodeA = {
   "id": nextId(),
   "title": "Node A",
@@ -86,16 +92,41 @@ type edge = {
   edge: GraphView.edge
 };
 
+type selected =
+  | Nothing
+  | Node(node)
+  | Edge(edge);
+
 type state = {
   /* graph: state, */
-  selected: GraphView.selected,
+  selected,
   nodes: list(node),
-  edges: list(edge)
+  edges: list(edge),
+  clocks: string,
+  vars: string
 };
 
 let init_node = v => {invariant: "", node: v};
 
 let init_edge = e => {guard: "", update: "", label: "", edge: e};
+
+let selected_to_view: selected => GraphView.selected =
+  s =>
+    switch s {
+    | Nothing => GraphView.Nothing
+    | Node(v) => GraphView.Node(v.node)
+    | Edge(e) => GraphView.Edge(e.edge)
+    };
+
+let selected_node = s =>
+  switch s {
+  | Node(v) => v
+  };
+
+let selected_edge = s =>
+  switch s {
+  | Edge(e) => e
+  };
 
 let onSelectNode = (v: node) => Js.log(v);
 
@@ -140,10 +171,21 @@ let onSwapEdge:
       "type": GraphView.emptyEdgeType
       /* TODO: Problem with ##type accessor */
     };
-    let e = List.find(x => x.edge == e, graph.edges);
+    let e = List.find(x => x.edge === e, graph.edges);
     let edges = [{...e, edge}, ...removeEdge(edge, graph.edges)];
     {...graph, edges};
   };
+
+let get_node: (GraphView.node, list(node)) => node =
+  node => List.find(v => v.node##id == node##id);
+
+let get_edge = edge => List.find(e => e.edge === edge);
+
+let update_node = (nodes, node) =>
+  List.map(v => v.node##id == node.node##id ? node : v, nodes);
+
+let update_edge = (edges, edge) =>
+  List.map(e => e.edge === edge.edge ? edge : e, edges);
 
 /* type additionalNodeState = {
      id: int,
@@ -158,6 +200,13 @@ let onSwapEdge:
      label: string
    }; */
 type action =
+  | UpdateClocks(string)
+  | UpdateVars(string)
+  | UpdateNodeInvariant(string)
+  | UpdateNodeLabel(string)
+  | UpdateEdgeGuard(string)
+  | UpdateEdgeLabel(string)
+  | UpdateEdgeUpdate(string)
   | Deselect
   | SelectNode(GraphView.node)
   | SelectEdge(GraphView.edge)
@@ -170,18 +219,143 @@ type action =
 
 let component = ReasonReact.reducerComponent("App");
 
+module Declaration = {
+  let component = ReasonReact.statelessComponent("Declaration");
+  let make = (~desc, ~placeholder, ~onChange, ~value, _children) => {
+    ...component,
+    render: self =>
+      <div>
+        (str(desc))
+        <textarea
+          placeholder
+          onChange=(evt => onChange(valueFromEvent(evt)))
+          value
+        />
+      </div>
+  };
+};
+
+/* module Declaration = {
+     type state = string;
+     let component = ReasonReact.reducerComponent("Declaration");
+     let make = (~desc, ~placeholder, ~onChange, ~value, _children) => {
+       ...component,
+       initialState: () => value,
+       reducer: (newText, _text) => {
+         onChange(newText);
+         ReasonReact.Update(newText);
+       },
+       render: ({state: text, reduce}) =>
+         <div>
+           (str(desc))
+           <textarea
+             placeholder
+             onChange=(reduce(evt => valueFromEvent(evt)))
+             value=text
+           />
+         </div>
+     };
+   }; */
+let renderLabel = (~reduce, ~state) =>
+  switch state.selected {
+  | Node(v) =>
+    <Declaration
+      desc="Label:"
+      placeholder="Node Label"
+      value=v.node##title
+      onChange=(reduce(evt => UpdateNodeLabel(evt)))
+    />
+  | Edge(e) =>
+    <Declaration
+      desc="Label:"
+      placeholder="Edge Label"
+      value=e.label
+      onChange=(reduce(evt => UpdateEdgeLabel(evt)))
+    />
+  | Nothing => ReasonReact.nullElement
+  };
+
+let renderGuard = (~reduce, ~state) =>
+  switch state.selected {
+  | Node(v) =>
+    <Declaration
+      desc="Invariant:"
+      placeholder="Node Invariant"
+      value=v.invariant
+      onChange=(reduce(evt => UpdateNodeInvariant(evt)))
+    />
+  | Edge(e) =>
+    <Declaration
+      desc="Guard:"
+      placeholder="Edge Guard"
+      value=e.guard
+      onChange=(reduce(evt => UpdateEdgeGuard(evt)))
+    />
+  | Nothing => ReasonReact.nullElement
+  };
+
+let renderUpdate = (~reduce, ~state) =>
+  switch state.selected {
+  | Edge(e) =>
+    <Declaration
+      desc="Update:"
+      placeholder="Edge Update"
+      value=e.update
+      onChange=(reduce(evt => UpdateEdgeUpdate(evt)))
+    />
+  | _ => ReasonReact.nullElement
+  };
+
 let make = (~message, _children) => {
   ...component,
   initialState: () => {
+    clocks: "",
+    vars: "",
     nodes: List.map(init_node, nodes),
     edges: List.map(init_edge, edges),
     selected: Nothing
   },
-  reducer: (action: action, state: state) =>
+  reducer: (action: action, state: state) => {
+    let update_node = upd => {
+      let node = selected_node(state.selected);
+      ReasonReact.Update({
+        ...state,
+        nodes: update_node(state.nodes, upd(node))
+      });
+    };
+    let update_edge = upd => {
+      let edge = selected_edge(state.selected);
+      ReasonReact.Update({
+        ...state,
+        edges: update_edge(state.edges, upd(edge))
+      });
+    };
     switch action {
+    | UpdateClocks(s) => ReasonReact.Update({...state, clocks: s})
+    | UpdateVars(s) => ReasonReact.Update({...state, vars: s})
+    | UpdateNodeInvariant(s) => update_node(node => {...node, invariant: s})
+    | UpdateNodeLabel(s) =>
+      update_node(node =>
+        {
+          ...node,
+          node: {
+            "id": node.node##id,
+            "title": s,
+            "x": node.node##x,
+            "y": node.node##y,
+            /* TODO: type is not a valid selector */
+            "type": GraphView.emptyType
+          }
+        }
+      )
+    | UpdateEdgeGuard(s) => update_edge(edge => {...edge, guard: s})
+    | UpdateEdgeLabel(s) => update_edge(edge => {...edge, label: s})
+    | UpdateEdgeUpdate(s) => update_edge(edge => {...edge, update: s})
     | Deselect => ReasonReact.Update({...state, selected: Nothing})
-    | SelectNode(v) => ReasonReact.Update({...state, selected: Node(v)})
-    | SelectEdge(e) => ReasonReact.Update({...state, selected: Edge(e)})
+    | SelectNode(v) =>
+      ReasonReact.Update({...state, selected: Node(get_node(v, state.nodes))})
+    | SelectEdge(e) =>
+      ReasonReact.Update({...state, selected: Edge(get_edge(e, state.edges))})
     | DeleteNode(node) =>
       let nodes = List.filter(v => v.node##id != node##id, state.nodes);
       let edges =
@@ -200,7 +374,8 @@ let make = (~message, _children) => {
       let nodes =
         List.map(v => v.node##id == node##id ? {...v, node} : v, state.nodes);
       ReasonReact.Update({...state, nodes});
-    },
+    };
+  },
   render: ({reduce, state, handle}) => {
     Js.log("render");
     Js.log(List.length(state.nodes));
@@ -232,8 +407,23 @@ let make = (~message, _children) => {
           )
           nodes=(List.map(v => v.node, state.nodes))
           edges=(List.map(e => e.edge, state.edges))
-          selected=state.selected
+          selected=(selected_to_view(state.selected))
         />
+        <Declaration
+          desc="Clocks:"
+          placeholder="Clock Declarations"
+          value=state.clocks
+          onChange=(reduce(evt => UpdateClocks(evt)))
+        />
+        <Declaration
+          desc="Vars:"
+          placeholder="Declarations of integer variables"
+          value=state.vars
+          onChange=(reduce(evt => UpdateVars(evt)))
+        />
+        (renderUpdate(reduce, state))
+        (renderGuard(reduce, state))
+        (renderLabel(reduce, state))
       </div>
     </div>;
   }
