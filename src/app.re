@@ -21,7 +21,7 @@ let nextId2 = () => {
 /* Util */
 let str = ReasonReact.stringToElement;
 
-let nodeA: GraphView.node = {
+let nodeA = {
   "id": nextId(),
   "title": "Node A",
   "x": 258.3976135253906,
@@ -29,7 +29,7 @@ let nodeA: GraphView.node = {
   "type": GraphView.specialType
 };
 
-let nodeB: GraphView.node = {
+let nodeB = {
   "id": nextId(),
   "title": "Node B",
   "x": 593.9393920898438,
@@ -65,20 +65,43 @@ let nextTestNode = () => {
   };
 };
 
-let nodes: list(GraphView.node) = [nodeA, nodeB, nodeC, nodeD];
+let nodes = [nodeA, nodeB, nodeC, nodeD];
 
-let edges: list(GraphView.edge) = [
+let edges = [
   {"source": 1, "target": 2, "type": GraphView.specialEdgeType},
   {"source": 2, "target": 4, "type": GraphView.emptyEdgeType}
 ];
 
-let init_state = {GraphView.nodes, edges};
+let init_state: GraphView.graph_state = {nodes, edges};
 
-let onSelectNode = (v: GraphView.node) => Js.log(v);
+type node = {
+  invariant: string,
+  node: GraphView.node
+};
+
+type edge = {
+  guard: string,
+  update: string,
+  label: string,
+  edge: GraphView.edge
+};
+
+type state = {
+  /* graph: state, */
+  selected: GraphView.selected,
+  nodes: list(node),
+  edges: list(edge)
+};
+
+let init_node = v => {invariant: "", node: v};
+
+let init_edge = e => {guard: "", update: "", label: "", edge: e};
+
+let onSelectNode = (v: node) => Js.log(v);
 
 let onDeselectNode = () => Js.log("Deslected node");
 
-let onCreateNode = (graph: GraphView.graph_state, x: float, y: float) => {
+let onCreateNode = (graph: state, x: float, y: float) => {
   let node: GraphView.node = {
     "id": nextId(),
     "title": "Node N",
@@ -86,47 +109,54 @@ let onCreateNode = (graph: GraphView.graph_state, x: float, y: float) => {
     "y": y,
     "type": GraphView.emptyType
   };
-  let nodes = [node, ...graph.nodes];
-  {...graph, GraphView.nodes};
+  let nodes = [init_node(node), ...graph.nodes];
+  {...graph, nodes};
 };
 
-let onSelectEdge: GraphView.edge => unit = e => Js.log(e);
+let onSelectEdge: edge => unit = e => Js.log(e);
 
-let onCreateEdge:
-  (GraphView.graph_state, GraphView.node, GraphView.node) =>
-  GraphView.graph_state =
+let onCreateEdge: (state, GraphView.node, GraphView.node) => state =
   (graph, v, w) => {
     let edge: GraphView.edge = {
       "source": v##id,
       "target": w##id,
       "type": GraphView.emptyEdgeType
     };
-    let edges = [edge, ...graph.edges];
+    let edges = [init_edge(edge), ...graph.edges];
     {...graph, edges};
   };
 
 let removeEdge = edge =>
-  List.filter(e => e##source != edge##source || e##target != edge##target);
+  List.filter(e =>
+    e.edge##source != edge##source || e.edge##target != edge##target
+  );
 
 let onSwapEdge:
-  (GraphView.graph_state, GraphView.node, GraphView.node, GraphView.edge) =>
-  GraphView.graph_state =
-  (graph, v, w, edge) => {
+  (state, GraphView.node, GraphView.node, GraphView.edge) => state =
+  (graph, v, w, e) => {
     let edge: GraphView.edge = {
       "source": v##id,
       "target": w##id,
       "type": GraphView.emptyEdgeType
       /* TODO: Problem with ##type accessor */
     };
-    let edges = [edge, ...removeEdge(edge, graph.edges)];
+    let e = List.find(x => x.edge == e, graph.edges);
+    let edges = [{...e, edge}, ...removeEdge(edge, graph.edges)];
     {...graph, edges};
   };
 
-type state = {
-  graph: GraphView.graph_state,
-  selected: GraphView.selected
-};
+/* type additionalNodeState = {
+     id: int,
+     invariant: string
+   };
 
+   type additionalEdgeState = {
+     source: int,
+     target: int,
+     guard: string,
+     update: string,
+     label: string
+   }; */
 type action =
   | Deselect
   | SelectNode(GraphView.node)
@@ -142,55 +172,38 @@ let component = ReasonReact.reducerComponent("App");
 
 let make = (~message, _children) => {
   ...component,
-  initialState: () => {graph: init_state, selected: Nothing},
+  initialState: () => {
+    nodes: List.map(init_node, nodes),
+    edges: List.map(init_edge, edges),
+    selected: Nothing
+  },
   reducer: (action: action, state: state) =>
     switch action {
     | Deselect => ReasonReact.Update({...state, selected: Nothing})
     | SelectNode(v) => ReasonReact.Update({...state, selected: Node(v)})
     | SelectEdge(e) => ReasonReact.Update({...state, selected: Edge(e)})
     | DeleteNode(node) =>
-      let nodes = List.filter(v => v##id != node##id, state.graph.nodes);
+      let nodes = List.filter(v => v.node##id != node##id, state.nodes);
       let edges =
         List.filter(
-          e => e##source != node##id && e##target != node##id,
-          state.graph.edges
+          e => e.edge##source != node##id && e.edge##target != node##id,
+          state.edges
         );
-      ReasonReact.Update({
-        ...state,
-        graph: {
-          edges,
-          nodes
-        }
-      });
+      ReasonReact.Update({...state, edges, nodes});
     | DeleteEdge(edge) =>
-      let edges = removeEdge(edge, state.graph.edges);
-      ReasonReact.Update({
-        ...state,
-        graph: {
-          ...state.graph,
-          edges
-        }
-      });
-    | CreateNode(x, y) =>
-      ReasonReact.Update({...state, graph: onCreateNode(state.graph, x, y)})
-    | CreateEdge(v, w) =>
-      ReasonReact.Update({...state, graph: onCreateEdge(state.graph, v, w)})
-    | SwapEdge(v, w, e) =>
-      ReasonReact.Update({...state, graph: onSwapEdge(state.graph, v, w, e)})
+      let edges = removeEdge(edge, state.edges);
+      ReasonReact.Update({...state, edges});
+    | CreateNode(x, y) => ReasonReact.Update(onCreateNode(state, x, y))
+    | CreateEdge(v, w) => ReasonReact.Update(onCreateEdge(state, v, w))
+    | SwapEdge(v, w, e) => ReasonReact.Update(onSwapEdge(state, v, w, e))
     | UpdateNode(node) =>
       let nodes =
-        List.map(v => v##id == node##id ? node : v, state.graph.nodes);
-      ReasonReact.Update({
-        ...state,
-        graph: {
-          ...state.graph,
-          GraphView.nodes
-        }
-      });
+        List.map(v => v.node##id == node##id ? {...v, node} : v, state.nodes);
+      ReasonReact.Update({...state, nodes});
     },
   render: ({reduce, state, handle}) => {
     Js.log("render");
-    Js.log(List.length(state.graph.nodes));
+    Js.log(List.length(state.nodes));
     <div className="App">
       <div className="App-header">
         <img src=logo className="App-logo" alt="logo" />
@@ -217,8 +230,8 @@ let make = (~message, _children) => {
               SwapEdge(v, w, e);
             })
           )
-          nodes=state.graph.nodes
-          edges=state.graph.edges
+          nodes=(List.map(v => v.node, state.nodes))
+          edges=(List.map(e => e.edge, state.edges))
           selected=state.selected
         />
       </div>
