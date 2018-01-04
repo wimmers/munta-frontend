@@ -312,7 +312,9 @@ export default class Graph extends React.Component {
                     onSelectEdge={this.props.onSelectEdge}
                     onCreateEdge={this.props.onCreateEdge}
                     onSwapEdge={this.props.onSwapEdge}
-                    onDeleteEdge={this.props.onDeleteEdge} />
+                    onDeleteEdge={this.props.onDeleteEdge}
+                    enableFocus={true}
+                />
             </div>
         );
     }
