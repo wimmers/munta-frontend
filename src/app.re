@@ -187,18 +187,6 @@ let update_node = (nodes, node) =>
 let update_edge = (edges, edge) =>
   List.map(e => e.edge === edge.edge ? edge : e, edges);
 
-/* type additionalNodeState = {
-     id: int,
-     invariant: string
-   };
-
-   type additionalEdgeState = {
-     source: int,
-     target: int,
-     guard: string,
-     update: string,
-     label: string
-   }; */
 type action =
   | UpdateClocks(string)
   | UpdateVars(string)
@@ -240,22 +228,35 @@ module Declaration = {
      let component = ReasonReact.reducerComponent("Declaration");
      let make = (~desc, ~placeholder, ~onChange, ~value, _children) => {
        ...component,
-       initialState: () => value,
-       reducer: (newText, _text) => {
-         onChange(newText);
-         ReasonReact.Update(newText);
+       initialState: () => {
+         Js.log(desc ++ " Init with " ++ value);
+         value;
        },
+       reducer: (newText, _text) =>
+         /* onChange(newText); */
+         ReasonReact.Update(newText),
        render: ({state: text, reduce}) =>
          <div>
            (str(desc))
            <textarea
              placeholder
              onChange=(reduce(evt => valueFromEvent(evt)))
+             onBlur=(
+               _evt => {
+                 Js.log(desc ++ " Blur with " ++ text);
+                 onChange(text);
+               }
+             )
              value=text
            />
          </div>
      };
    }; */
+let key_of_node = v => string_of_int(v.node##id);
+
+let key_of_edge = e =>
+  string_of_int(e.edge##source) ++ "|" ++ string_of_int(e.edge##target);
+
 let renderLabel = (~reduce, ~state) =>
   switch state.selected {
   | Node(v) =>
@@ -263,6 +264,7 @@ let renderLabel = (~reduce, ~state) =>
       desc="Label:"
       placeholder="Node Label"
       value=v.node##title
+      key=("LN" ++ key_of_node(v))
       onChange=(reduce(evt => UpdateNodeLabel(evt)))
     />
   | Edge(e) =>
@@ -270,6 +272,7 @@ let renderLabel = (~reduce, ~state) =>
       desc="Label:"
       placeholder="Edge Label"
       value=e.label
+      key=("LE" ++ key_of_edge(e))
       onChange=(reduce(evt => UpdateEdgeLabel(evt)))
     />
   | Nothing => ReasonReact.nullElement
@@ -282,6 +285,7 @@ let renderGuard = (~reduce, ~state) =>
       desc="Invariant:"
       placeholder="Node Invariant"
       value=v.invariant
+      key=("GN" ++ key_of_node(v))
       onChange=(reduce(evt => UpdateNodeInvariant(evt)))
     />
   | Edge(e) =>
@@ -289,6 +293,7 @@ let renderGuard = (~reduce, ~state) =>
       desc="Guard:"
       placeholder="Edge Guard"
       value=e.guard
+      key=("GE" ++ key_of_edge(e))
       onChange=(reduce(evt => UpdateEdgeGuard(evt)))
     />
   | Nothing => ReasonReact.nullElement
@@ -301,6 +306,7 @@ let renderUpdate = (~reduce, ~state) =>
       desc="Update:"
       placeholder="Edge Update"
       value=e.update
+      key=("UE" ++ key_of_edge(e))
       onChange=(reduce(evt => UpdateEdgeUpdate(evt)))
     />
   | _ => ReasonReact.nullElement
@@ -317,17 +323,19 @@ let make = (~message, _children) => {
   },
   reducer: (action: action, state: state) => {
     let update_node = upd => {
-      let node = selected_node(state.selected);
+      let node = upd(selected_node(state.selected));
       ReasonReact.Update({
         ...state,
-        nodes: update_node(state.nodes, upd(node))
+        selected: Node(node),
+        nodes: update_node(state.nodes, node)
       });
     };
     let update_edge = upd => {
-      let edge = selected_edge(state.selected);
+      let edge = upd(selected_edge(state.selected));
       ReasonReact.Update({
         ...state,
-        edges: update_edge(state.edges, upd(edge))
+        selected: Edge(edge),
+        edges: update_edge(state.edges, edge)
       });
     };
     switch action {
@@ -376,9 +384,7 @@ let make = (~message, _children) => {
       ReasonReact.Update({...state, nodes});
     };
   },
-  render: ({reduce, state, handle}) => {
-    Js.log("render");
-    Js.log(List.length(state.nodes));
+  render: ({reduce, state, handle}) =>
     <div className="App">
       <div className="App-header">
         <img src=logo className="App-logo" alt="logo" />
@@ -425,6 +431,5 @@ let make = (~message, _children) => {
         (renderGuard(reduce, state))
         (renderLabel(reduce, state))
       </div>
-    </div>;
-  }
+    </div>
 };
