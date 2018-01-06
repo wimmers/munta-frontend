@@ -1,3 +1,7 @@
+[%bs.raw {|require('./bootstrap/css/bootstrap.min.css')|}];
+
+[%bs.raw {|require('./bootstrap/css/bootstrap-theme.min.css')|}];
+
 [%bs.raw {|require('./app.css')|}];
 
 [@bs.module] external logo : string = "./logo.svg";
@@ -128,6 +132,18 @@ let selected_edge = s =>
   | Edge(e) => e
   };
 
+let node_out: node => Compile.node_in =
+  node => {id: node.node##id, invariant: node.invariant};
+
+let edge_out: edge => Compile.edge_in =
+  edge => {
+    source: edge.edge##source,
+    target: edge.edge##source,
+    guard: edge.guard,
+    label: edge.label,
+    update: edge.update
+  };
+
 let onSelectNode = (v: node) => Js.log(v);
 
 let onDeselectNode = () => Js.log("Deslected node");
@@ -211,10 +227,14 @@ module Declaration = {
   let component = ReasonReact.statelessComponent("Declaration");
   let make = (~desc, ~placeholder, ~onChange, ~value, _children) => {
     ...component,
-    render: self =>
-      <div>
-        (str(desc))
+    render: _self =>
+      <div className="form-group col-md-3">
+        <label htmlFor="text-box"> (str(desc)) </label>
         <textarea
+          id="text-box"
+          className="form-control"
+          rows=7
+          cols=20
           placeholder
           onChange=(evt => onChange(valueFromEvent(evt)))
           value
@@ -384,52 +404,68 @@ let make = (~message, _children) => {
       ReasonReact.Update({...state, nodes});
     };
   },
-  render: ({reduce, state, handle}) =>
-    <div className="App">
-      <div className="App-header">
-        <img src=logo className="App-logo" alt="logo" />
-        <h2> (ReasonReact.stringToElement(message)) </h2>
-      </div>
-      <p className="App-intro">
-        (ReasonReact.stringToElement("To get started, edit"))
-        <code> (ReasonReact.stringToElement(" src/app.re ")) </code>
-        (ReasonReact.stringToElement("and save to reload!"))
-      </p>
-      <div className="height">
-        <GraphView
-          onSelectNode=(reduce(v => SelectNode(v)))
-          onDeselectNode=(reduce(() => Deselect))
-          onUpdateNode=(reduce(v => UpdateNode(v)))
-          onCreateNode=(reduce(p => CreateNode(fst(p), snd(p))))
-          onDeleteNode=(reduce(v => DeleteNode(v)))
-          onDeleteEdge=(reduce(e => DeleteEdge(e)))
-          onSelectEdge=(reduce(e => SelectEdge(e)))
-          onCreateEdge=(reduce(p => CreateEdge(fst(p), snd(p))))
-          onSwapEdge=(
-            reduce(p => {
-              let (v, w, e) = p;
-              SwapEdge(v, w, e);
-            })
-          )
-          nodes=(List.map(v => v.node, state.nodes))
-          edges=(List.map(e => e.edge, state.edges))
-          selected=(selected_to_view(state.selected))
-        />
-        <Declaration
-          desc="Clocks:"
-          placeholder="Clock Declarations"
-          value=state.clocks
-          onChange=(reduce(evt => UpdateClocks(evt)))
-        />
-        <Declaration
-          desc="Vars:"
-          placeholder="Declarations of integer variables"
-          value=state.vars
-          onChange=(reduce(evt => UpdateVars(evt)))
-        />
-        (renderUpdate(reduce, state))
-        (renderGuard(reduce, state))
-        (renderLabel(reduce, state))
-      </div>
-    </div>
+  render: ({reduce, state, handle}) => {
+    let button_class = "btn btn-lg btn-default";
+    <div className="container">
+      /* <div className="App-header">
+           <img src=logo className="App-logo" alt="logo" />
+           <h2> (ReasonReact.stringToElement(message)) </h2>
+         </div>
+         <p className="App-intro">
+           (ReasonReact.stringToElement("To get started, edit"))
+           <code> (ReasonReact.stringToElement(" src/app.re ")) </code>
+           (ReasonReact.stringToElement("and save to reload!"))
+         </p> */
+
+        <div className="page-header">
+          <h1 className="text-muted"> (str("Munta")) </h1>
+          <p className="lead">
+            (str("Verified Timed Automata Model Checker"))
+          </p>
+        </div>
+        <div>
+          <GraphView
+            onSelectNode=(reduce(v => SelectNode(v)))
+            onDeselectNode=(reduce(() => Deselect))
+            onUpdateNode=(reduce(v => UpdateNode(v)))
+            onCreateNode=(reduce(p => CreateNode(fst(p), snd(p))))
+            onDeleteNode=(reduce(v => DeleteNode(v)))
+            onDeleteEdge=(reduce(e => DeleteEdge(e)))
+            onSelectEdge=(reduce(e => SelectEdge(e)))
+            onCreateEdge=(reduce(p => CreateEdge(fst(p), snd(p))))
+            onSwapEdge=(
+              reduce(p => {
+                let (v, w, e) = p;
+                SwapEdge(v, w, e);
+              })
+            )
+            nodes=(List.map(v => v.node, state.nodes))
+            edges=(List.map(e => e.edge, state.edges))
+            selected=(selected_to_view(state.selected))
+            graphControls=false
+            enableFocus=true
+          />
+          <div className="row">
+            <Declaration
+              desc="Clocks:"
+              placeholder="Clock Declarations"
+              value=state.clocks
+              onChange=(reduce(evt => UpdateClocks(evt)))
+            />
+            <Declaration
+              desc="Vars:"
+              placeholder="Declarations of integer variables"
+              value=state.vars
+              onChange=(reduce(evt => UpdateVars(evt)))
+            />
+          </div>
+          <div className="row">
+            (renderUpdate(reduce, state))
+            (renderGuard(reduce, state))
+            (renderLabel(reduce, state))
+          </div>
+          <input _type="button" className=button_class value="Compile!" />
+        </div>
+      </div>;
+  }
 };
