@@ -313,7 +313,8 @@ export default class Graph extends React.Component {
                     onCreateEdge={this.props.onCreateEdge}
                     onSwapEdge={this.props.onSwapEdge}
                     onDeleteEdge={this.props.onDeleteEdge}
-                    enableFocus={true}
+                    graphControls={this.props.graphControls}
+                    enableFocus={this.props.enableFocus}
                 />
             </div>
         );

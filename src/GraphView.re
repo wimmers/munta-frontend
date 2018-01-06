@@ -98,6 +98,8 @@ let make =
       ~nodes: list(node),
       ~edges: list(edge),
       ~selected: selected,
+      ~enableFocus: bool=false,
+      ~graphControls: bool=true,
       children
     ) => {
   let (selectedEdge, selectedNode) =
@@ -121,7 +123,9 @@ let make =
       "nodes": Array.of_list(nodes),
       "edges": Array.of_list(edges),
       "selectedEdge": selectedEdge,
-      "selectedNode": selectedNode
+      "selectedNode": selectedNode,
+      "graphControls": graphControls,
+      "enableFocus": enableFocus
       /* "selected":
          switch selected {
          | Nothing => Js.Nullable.null
