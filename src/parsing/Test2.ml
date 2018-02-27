@@ -1,10 +1,7 @@
 open Parser
 
-let input = Input.{text = "abcabc  abc"; index = 0; whitespace = " "}
-
-let abc = stringParser "abc"
-
 type ('a, 'b) bexp =
+  True |
   Not of ('a, 'b) bexp |
   And of ('a, 'b) bexp * ('a, 'b) bexp |
   Or of ('a, 'b) bexp * ('a, 'b) bexp |
@@ -19,14 +16,40 @@ type ('a, 'b) formula =
   AG of ('a, 'b) bexp |
   Leadsto of ('a, 'b) bexp * ('a, 'b) bexp
 
-type 'a test =
-  | Fail of string * 'a Parser.t
-  | Success of string * 'a Parser.t * 'a
-
 type 'a action =
   | Internal of 'a
   | Out of 'a
   | In of 'a
+
+
+(* Printing *)
+
+let print_parens s = "(" ^ s ^ ")"
+let print_infix sep a b = a ^ " " ^ sep ^ " " ^ b
+
+let rec print_bexp = function
+  | True -> "true"
+  | Not e -> print_bexp e |> print_parens
+  | And (e1, e2) -> print_infix "&&" (print_bexp e1 |> print_parens) (print_bexp e2 |> print_parens)
+  | Or (e1, e2) -> print_infix "||" (print_bexp e1 |> print_parens) (print_bexp e2 |> print_parens)
+  | Imply (e1, e2) -> print_infix "-->" (print_bexp e1 |> print_parens) (print_bexp e2 |> print_parens)
+  | Lt (x, c) -> print_infix "<" x (string_of_int c)
+  | Le (x, c) -> print_infix "<=" x (string_of_int c)
+  | Eq (x, c) -> print_infix "=" x (string_of_int c)
+  | Ge (x, c) -> print_infix ">=" x (string_of_int c)
+  | Gt (x, c) -> print_infix ">" x (string_of_int c)
+  | Loc (s, x) -> s ^ "." ^ x
+
+let print_action = function
+  | Internal x -> x
+  | Out x -> x ^ "!"
+  | In x -> x ^ "?"
+
+let print_update x = x ^ " := 0"
+
+let print_list print_elem xs = List.map print_elem xs |> String.concat ", "
+
+(* Parsing *)
 
 let scan_infix_pair p q s = p <*> (str s *> q)
 
@@ -87,6 +110,9 @@ let scan_bexp scan_bexp_elem =
   in
     scan_7
 
+let scan_bexp_or_true scan_bexp_elem =
+  scan_bexp scan_bexp_elem <|> str "" ^^ fun _ -> True
+
 let scan_prefix p head = str head *> p
 
 let scan_formula =
@@ -114,13 +140,21 @@ let scan_infix_mult p q seps =
 let scan_update = scan_infix_mult scan_var (str "0") ["="; ":="] ^^ fst
 let scan_updates = scan_sep "," scan_update
 
-let scan_edge_label = scan_first [
+let scan_action = scan_first [
   (scan_var <* str "?") ^^ (fun x -> In x);
   (scan_var <* str "!") ^^ (fun x -> Out x);
   scan_var              ^^ (fun x -> Internal x);
 ]
 
+let scan_edge_label = scan_action <|> str "" ^^ fun _ -> Internal ""
+
 let mk_input s = Input.{text = s; index = 0; whitespace = " "}
+
+
+(* Unit tests *)
+type 'a test =
+  | Fail of string * 'a Parser.t
+  | Success of string * 'a Parser.t * 'a
 
 let run_test = function
   | Fail (x, p) -> (
@@ -198,8 +232,3 @@ let evaluated_tests = List.concat([
   List.map (fun (x, y) -> (x, run_test y)) tests_bexp;
   List.map (fun (x, y) -> (x, run_test y)) tests_upds;
 ])
-
-let test = fun () ->
-  input
-  |> rep abc
-  |> Js.log;

@@ -26,7 +26,7 @@ let nextId2 = () => {
 
 let nodeA = {
   "id": nextId(),
-  "title": "Node A",
+  "title": "A",
   "x": 258.3976135253906,
   "y": 331.9783248901367,
   "type": GraphView.specialType
@@ -34,7 +34,7 @@ let nodeA = {
 
 let nodeB = {
   "id": nextId(),
-  "title": "Node B",
+  "title": "B",
   "x": 593.9393920898438,
   "y": 260.6060791015625,
   "type": GraphView.emptyType
@@ -42,7 +42,7 @@ let nodeB = {
 
 let nodeC = {
   "id": nextId(),
-  "title": "Node C",
+  "title": "C",
   "x": 237.5757598876953,
   "y": 61.81818389892578,
   "type": GraphView.emptyType
@@ -50,7 +50,7 @@ let nodeC = {
 
 let nodeD = {
   "id": nextId(),
-  "title": "Node C",
+  "title": "D",
   "x": 600.5757598876953,
   "y": 600.81818389892578,
   "type": GraphView.emptyType
@@ -130,17 +130,38 @@ let selected_edge = s =>
   | Edge(e) => e
   };
 
-let node_out: node => Compile.node_in =
-  node => {id: node.node##id, invariant: node.invariant};
+let node_out: node => Parse.node_in =
+  node => {
+    id: node.node##id,
+    invariant: node.invariant,
+    label: node.node##title
+  };
 
-let edge_out: edge => Compile.edge_in =
+let edge_out: edge => Parse.edge_in =
   edge => {
     source: edge.edge##source,
-    target: edge.edge##source,
+    target: edge.edge##target,
     guard: edge.guard,
     label: edge.label,
     update: edge.update
   };
+
+let automaton_out: (string, single_state) => Parse.automaton_in =
+  (label, {selected, nodes, edges, clocks, vars}) => {
+    nodes: List.map(node_out, nodes),
+    edges: List.map(edge_out, edges),
+    clocks,
+    vars
+  };
+
+let state_out = ({selected, automata}) =>
+  List.map(
+    ((i, x)) => {
+      let label = string_of_int(i);
+      (label, automaton_out(label, x));
+    },
+    automata
+  );
 
 let onSelectNode = (v: node) => Js.log(v);
 
@@ -545,6 +566,9 @@ let make = (~message, _children) => {
             onDelete=(reduce(x => DeleteAutomaton(x)))
           />
           <input _type="button" className=button_class value="Compile!" />
+        </div>
+        <div>
+          <pre> (str(state_out(state) |> Parse.compile_and_print)) </pre>
         </div>
       </div>;
     /* <Test />; */
