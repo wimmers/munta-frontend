@@ -105,7 +105,7 @@ type single_state = {
 
 type state = {
   automata: list((int, single_state)),
-  selected: option(int),
+  selected: option(int)
 };
 
 let init_node = v => {invariant: "", node: v};
@@ -160,7 +160,8 @@ let onCreateNode = (graph: single_state, x: float, y: float) => {
 
 let onSelectEdge: edge => unit = e => Js.log(e);
 
-let onCreateEdge: (single_state, GraphView.node, GraphView.node) => single_state =
+let onCreateEdge:
+  (single_state, GraphView.node, GraphView.node) => single_state =
   (graph, v, w) => {
     let edge: GraphView.edge = {
       "source": v##id,
@@ -177,7 +178,8 @@ let removeEdge = edge =>
   );
 
 let onSwapEdge:
-  (single_state, GraphView.node, GraphView.node, GraphView.edge) => single_state =
+  (single_state, GraphView.node, GraphView.node, GraphView.edge) =>
+  single_state =
   (graph, v, w, e) => {
     let edge: GraphView.edge = {
       "source": v##id,
@@ -337,51 +339,69 @@ let empty_automaton = {
   vars: "",
   nodes: [],
   edges: [],
-  selected: Nothing,
+  selected: Nothing
 };
 
 let make = (~message, _children) => {
   ...component,
   initialState: () => {
-    automata: [(0, {
-      clocks: "",
-      vars: "",
-      nodes: List.map(init_node, nodes),
-      edges: List.map(init_edge, edges),
-      selected: Nothing
-    })],
+    automata: [
+      (
+        0,
+        {
+          clocks: "",
+          vars: "",
+          nodes: List.map(init_node, nodes),
+          edges: List.map(init_edge, edges),
+          selected: Nothing
+        }
+      )
+    ],
     selected: Some(0)
   },
   reducer: (action: action, {selected, automata}: state) => {
-    let mk_upd(f) = switch selected {
+    let mk_upd = f =>
+      switch selected {
       | None => ReasonReact.NoUpdate
-      | Some(key) => ReasonReact.Update({selected, automata: assoc_upd_with(f, key, automata)})
+      | Some(key) =>
+        ReasonReact.Update({
+          selected,
+          automata: assoc_upd_with(f, key, automata)
+        })
       };
-    let update_node = upd => mk_upd(state => {
-      let node = upd(selected_node(state.selected));
-      {
-        ...state,
-        selected: Node(node),
-        nodes: update_node(state.nodes, node)
-      };
-    });
-    let update_edge = upd => mk_upd(state => {
-      let edge = upd(selected_edge(state.selected));
-      {
-        ...state,
-        selected: Edge(edge),
-        edges: update_edge(state.edges, edge)
-      };
-    });
+    let update_node = upd =>
+      mk_upd(state => {
+        let node = upd(selected_node(state.selected));
+        {
+          ...state,
+          selected: Node(node),
+          nodes: update_node(state.nodes, node)
+        };
+      });
+    let update_edge = upd =>
+      mk_upd(state => {
+        let edge = upd(selected_edge(state.selected));
+        {
+          ...state,
+          selected: Edge(edge),
+          edges: update_edge(state.edges, edge)
+        };
+      });
     switch action {
-    | ChangeAutomaton(key, value) => {
+    | ChangeAutomaton(key, value) =>
       selected == Some(key) ?
-      ReasonReact.NoUpdate :
-      List.mem_assoc(key, automata) ?
-      ReasonReact.Update({selected: Some(key), automata}) :
-      ReasonReact.Update({selected: Some(key), automata: [(key, empty_automaton), ...automata]})
-    }
-    | DeleteAutomaton(key) => ReasonReact.Update({selected: None, automata: List.remove_assoc(key, automata)})
+        ReasonReact.NoUpdate :
+        List.mem_assoc(key, automata) ?
+          ReasonReact.Update({selected: Some(key), automata}) :
+          ReasonReact.Update({
+            selected: Some(key),
+            automata: [(key, empty_automaton), ...automata]
+          })
+    | DeleteAutomaton(key) =>
+      ReasonReact.Update({
+        selected: None,
+        automata: List.remove_assoc(key, automata)
+      })
     | UpdateClocks(s) => mk_upd(state => {...state, clocks: s})
     | UpdateVars(s) => mk_upd(state => {...state, vars: s})
     | UpdateNodeInvariant(s) => update_node(node => {...node, invariant: s})
@@ -407,31 +427,41 @@ let make = (~message, _children) => {
       mk_upd(state => {...state, selected: Node(get_node(v, state.nodes))})
     | SelectEdge(e) =>
       mk_upd(state => {...state, selected: Edge(get_edge(e, state.edges))})
-    | DeleteNode(node) => mk_upd(state => {
-      let nodes = List.filter(v => v.node##id != node##id, state.nodes);
-      let edges =
-        List.filter(
-          e => e.edge##source != node##id && e.edge##target != node##id,
-          state.edges
-        );
-      {...state, edges, nodes}});
-    | DeleteEdge(edge) => mk_upd(state => {
-      let edges = removeEdge(edge, state.edges);
-      {...state, edges}
+    | DeleteNode(node) =>
+      mk_upd(state => {
+        let nodes = List.filter(v => v.node##id != node##id, state.nodes);
+        let edges =
+          List.filter(
+            e => e.edge##source != node##id && e.edge##target != node##id,
+            state.edges
+          );
+        {...state, edges, nodes};
       })
-    | CreateNode(x, y) => {Js.log("Create node"); mk_upd(state => onCreateNode(state, x, y))}
+    | DeleteEdge(edge) =>
+      mk_upd(state => {
+        let edges = removeEdge(edge, state.edges);
+        {...state, edges};
+      })
+    | CreateNode(x, y) =>
+      Js.log("Create node");
+      mk_upd(state => onCreateNode(state, x, y));
     | CreateEdge(v, w) => mk_upd(state => onCreateEdge(state, v, w))
     | SwapEdge(v, w, e) => mk_upd(state => onSwapEdge(state, v, w, e))
-    | UpdateNode(node) => mk_upd(state => {
-      let nodes =
-        List.map(v => v.node##id == node##id ? {...v, node} : v, state.nodes);
-      {...state, nodes};
-    })
+    | UpdateNode(node) =>
+      mk_upd(state => {
+        let nodes =
+          List.map(
+            v => v.node##id == node##id ? {...v, node} : v,
+            state.nodes
+          );
+        {...state, nodes};
+      })
     };
   },
   render: ({reduce, state, handle}) => {
     let button_class = "btn btn-lg btn-default";
-    let mk_render = f => switch state.selected {
+    let mk_render = f =>
+      switch state.selected {
       | None => ReasonReact.nullElement
       | Some(key) => f(List.assoc(key, state.automata))
       };
@@ -453,58 +483,70 @@ let make = (~message, _children) => {
           </p>
         </div>
         <div>
-        (mk_render(state =>
-          <GraphView
-            onSelectNode=(reduce(v => SelectNode(v)))
-            onDeselectNode=(reduce(() => Deselect))
-            onUpdateNode=(reduce(v => UpdateNode(v)))
-            onCreateNode=(reduce(p => CreateNode(fst(p), snd(p))))
-            onDeleteNode=(reduce(v => DeleteNode(v)))
-            onDeleteEdge=(reduce(e => DeleteEdge(e)))
-            onSelectEdge=(reduce(e => SelectEdge(e)))
-            onCreateEdge=(reduce(p => CreateEdge(fst(p), snd(p))))
-            onSwapEdge=(
-              reduce(p => {
-                let (v, w, e) = p;
-                SwapEdge(v, w, e);
+          (
+            mk_render(state =>
+              <GraphView
+                onSelectNode=(reduce(v => SelectNode(v)))
+                onDeselectNode=(reduce(() => Deselect))
+                onUpdateNode=(reduce(v => UpdateNode(v)))
+                onCreateNode=(reduce(p => CreateNode(fst(p), snd(p))))
+                onDeleteNode=(reduce(v => DeleteNode(v)))
+                onDeleteEdge=(reduce(e => DeleteEdge(e)))
+                onSelectEdge=(reduce(e => SelectEdge(e)))
+                onCreateEdge=(reduce(p => CreateEdge(fst(p), snd(p))))
+                onSwapEdge=(
+                  reduce(p => {
+                    let (v, w, e) = p;
+                    SwapEdge(v, w, e);
+                  })
+                )
+                nodes=(List.map(v => v.node, state.nodes))
+                edges=(List.map(e => e.edge, state.edges))
+                selected=(selected_to_view(state.selected))
+                graphControls=false
+                enableFocus=true
+              />
+            )
+          )
+          (
+            mk_render(state =>
+              <div className="row">
+                <Declaration
+                  desc="Clocks:"
+                  placeholder="Clock Declarations"
+                  value=state.clocks
+                  onChange=(reduce(evt => UpdateClocks(evt)))
+                />
+                <Declaration
+                  desc="Vars:"
+                  placeholder="Declarations of integer variables"
+                  value=state.vars
+                  onChange=(reduce(evt => UpdateVars(evt)))
+                />
+              </div>
+            )
+          )
+          (
+            mk_render(state =>
+              <div className="row">
+                (renderUpdate(reduce, state))
+                (renderGuard(reduce, state))
+                (renderLabel(reduce, state))
+              </div>
+            )
+          )
+          <ItemList
+            onChangeFocus=(
+              reduce(x => {
+                let (k, v) = x;
+                ChangeAutomaton(k, v);
               })
             )
-            nodes=(List.map(v => v.node, state.nodes))
-            edges=(List.map(e => e.edge, state.edges))
-            selected=(selected_to_view(state.selected))
-            graphControls=false
-            enableFocus=true
-          />
-        ))
-        (mk_render(state =>
-          <div className="row">
-            <Declaration
-              desc="Clocks:"
-              placeholder="Clock Declarations"
-              value=state.clocks
-              onChange=(reduce(evt => UpdateClocks(evt)))
-            />
-            <Declaration
-              desc="Vars:"
-              placeholder="Declarations of integer variables"
-              value=state.vars
-              onChange=(reduce(evt => UpdateVars(evt)))
-            />
-          </div>
-        ))
-        (mk_render(state =>
-          <div className="row">
-            (renderUpdate(reduce, state))
-            (renderGuard(reduce, state))
-            (renderLabel(reduce, state))
-          </div>
-        ))
-          <ItemList
-            onChangeFocus=(reduce(x => {let (k,v) = x; ChangeAutomaton(k,v)}))
             onDelete=(reduce(x => DeleteAutomaton(x)))
           />
           <input _type="button" className=button_class value="Compile!" />
         </div>
       </div>;
+    /* <Test />; */
   }
 };
