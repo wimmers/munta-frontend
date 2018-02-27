@@ -136,45 +136,67 @@ let run_test = function
     | _ -> "Test failed for input: " ^ x
 
 let tests_bexp = [
-  ("Bexp 1", Success ("a < 3 && b >= 2 || c <= 4", scan_bexp scan_bexp_elem, Or (And (Lt("a", 3), Ge("b", 2)), Le("c", 4))));
-  ("Bexp 2", Success ("a < 3 && b >= 2 || ~ c <= 4", scan_bexp scan_bexp_elem, And (Lt("a", 3), Ge("b", 2))));
-  ("Bexp 3", Success ("a < 3 && b >= 2 || ~ (c <= 4)", scan_bexp scan_bexp_elem, Or (And (Lt("a", 3), Ge("b", 2)), Not (Le("c", 4)))));
-  ("Bexp 4", Success ("a < 3 -> (b >= 2 || ~ (c <= 4))", scan_bexp scan_bexp_elem, Imply (Lt("a", 3), Or (Ge("b", 2), Not (Le("c", 4))))));
-  ("Bexp 5", Fail ("a << 3", scan_bexp scan_bexp_elem));
-  ("Bexp 6", Success ("a < 3", scan_bexp scan_bexp_elem, Lt("a", 3)));
-  ("Bexp 7", Success ("a < 3 && b >= 2", scan_bexp scan_bexp_elem, And (Lt("a", 3), Ge("b", 2))));
-  ("Bexp 81", Success ("(_b = 123456789 && a12 > 0) && A_B3 <= -1", scan_bexp scan_bexp_elem, And (And(Eq("_b", 123456789), Gt("a12", 0)), Le("A_B3", -1))));
-  ("Bexp 82", Success ("_b = 123456789 && (a12 > 0 && A_B3 <= -1)", scan_bexp scan_bexp_elem, And (Eq("_b", 123456789), And(Gt("a12", 0), Le("A_B3", -1)))));
-  ("Bexp 8", Success ("_b = 123456789 && a12 > 0 && A_B3 <= -1", scan_bexp scan_bexp_elem, And (Eq("_b", 123456789), And(Gt("a12", 0), Le("A_B3", -1)))));
-  ("a < 3", Success ("a < 3", scan_bexp_elem, Lt("a", 3)));
-  ("_b = 123456789", Success ("_b = 123456789", scan_bexp_elem, Eq("_b", 123456789)));
-  ("a12 > 0", Success ("a12 > 0", scan_bexp_elem, Gt("a12", 0)));
-  ("A_B3 <= -1", Success ("A_B3 <= -1", scan_bexp_elem, Le("A_B3", -1)));
+  "Bexp 1", Success ("a < 3 && b >= 2 || c <= 4", scan_bexp scan_bexp_elem, Or (And (Lt("a", 3), Ge("b", 2)), Le("c", 4)));
+  "Bexp 2", Success ("a < 3 && b >= 2 || ~ c <= 4", scan_bexp scan_bexp_elem, And (Lt("a", 3), Ge("b", 2)));
+  "Bexp 3", Success ("a < 3 && b >= 2 || ~ (c <= 4)", scan_bexp scan_bexp_elem, Or (And (Lt("a", 3), Ge("b", 2)), Not (Le("c", 4))));
+  "Bexp 4", Success ("a < 3 -> (b >= 2 || ~ (c <= 4))", scan_bexp scan_bexp_elem, Imply (Lt("a", 3), Or (Ge("b", 2), Not (Le("c", 4)))));
+  "Bexp 5", Fail ("a << 3", scan_bexp scan_bexp_elem);
+  "Bexp 6", Success ("a < 3", scan_bexp scan_bexp_elem, Lt("a", 3));
+  "Bexp 7", Success ("a < 3 && b >= 2", scan_bexp scan_bexp_elem, And (Lt("a", 3), Ge("b", 2)));
+  "Bexp 81", Success ("(_b = 123456789 && a12 > 0) && A_B3 <= -1", scan_bexp scan_bexp_elem, And (And(Eq("_b", 123456789), Gt("a12", 0)), Le("A_B3", -1)));
+  "Bexp 82", Success ("_b = 123456789 && (A._a1 && A_B3 <= -1)", scan_bexp scan_bexp_elem, And (Eq("_b", 123456789), And(Loc("A", "_a1"), Le("A_B3", -1))));
+  "Bexp 8", Success ("_b = 123456789 && a12 > 0 && A_B3 <= -1", scan_bexp scan_bexp_elem, And (Eq("_b", 123456789), And(Gt("a12", 0), Le("A_B3", -1))));
+  "a < 3", Success ("a < 3", scan_bexp_elem, Lt("a", 3));
+  "_b = 123456789", Success ("_b = 123456789", scan_bexp_elem, Eq("_b", 123456789));
+  "a12 > 0", Success ("a12 > 0", scan_bexp_elem, Gt("a12", 0));
+  "A_B3 <= -1", Success ("A_B3 <= -1", scan_bexp_elem, Le("A_B3", -1));
+  "a._a1", Success ("a._a1", scan_bexp_elem, Loc("a", "_a1"));
 ]
 
 let tests_var = [
-  ("a", Success ("a", scan_var, "a"));
-  ("__a_bC_1234_", Success ("__a_bC_1234_", scan_var, "__a_bC_1234_"));
-  ("_", Success ("_", scan_var, "_"));
-  ("1abc", Fail ("1abc", scan_var));
+  "a", Success ("a", scan_var, "a");
+  "__a_bC_1234_", Success ("__a_bC_1234_", scan_var, "__a_bC_1234_");
+  "_", Success ("_", scan_var, "_");
+  "1abc", Fail ("1abc", scan_var);
 ]
 
 let tests_int = [
-  ("0", Success ("0", scan_int, 0));
-  ("1", Success ("1", scan_int, 1));
-  ("-1", Success ("-1", scan_int, -1));
-  ("10", Success ("10", scan_int, 10));
-  ("-10", Success ("-10", scan_int, -10));
-  ("-123456789", Success ("-123456789", scan_int, -123456789));
-  ("01", Success ("01", scan_int, 0));
-  ("-0", Fail ("-0", scan_int));
-  ("-01", Fail ("-01", scan_int));
+  "0", Success ("0", scan_int, 0);
+  "1", Success ("1", scan_int, 1);
+  "-1", Success ("-1", scan_int, -1);
+  "10", Success ("10", scan_int, 10);
+  "-10", Success ("-10", scan_int, -10);
+  "-123456789", Success ("-123456789", scan_int, -123456789);
+  "01", Success ("01", scan_int, 0);
+  "-0", Fail ("-0", scan_int);
+  "-01", Fail ("-01", scan_int);
+]
+
+let tests_upds = [
+  "Upd 0", Success ("0", scan_updates, []);
+  "Upd []", Success ("", scan_updates, []);
+  "Upd [x=0]", Success ("x=0", scan_updates, ["x"]);
+  "Upd [x=1]", Success ("x=1", scan_updates, []);
+  "Upd [x=0, y:=0]", Success ("x=0, y=0", scan_updates, ["x"; "y"]);
+  "Upd [x :=  0  ,y:=  0]", Success ("x :=  0  ,y:=  0", scan_updates, ["x"; "y"]);
+  "Upd [x : =  0  ,y:=  0]", Success ("x : =  0  ,y:=  0", scan_updates, []);
+  "Upd [_x:= 0 ,    Y_1AYyz_z  =0]", Success ("_x:= 0 ,    Y_1AYyz_z  =0", scan_updates, ["_x"; "Y_1AYyz_z"]);
+]
+
+let test_vars = [
+  "Vars []", Success ("", scan_vars, []);
+  "Vars [x]", Success ("x", scan_vars, ["x"]);
+  "Vars [x , y]", Success ("x , y", scan_vars, ["x"; "y"]);
+  "Vars [x, y]", Success ("x, y", scan_clocks, ["x"; "y"]);
+  "Vars [x,y]", Success ("x,y", scan_vars, ["x"; "y"]);
+  "Vars [1,y]", Success ("1,y", scan_vars, []);
 ]
 
 let evaluated_tests = List.concat([
   List.map (fun (x, y) -> (x, run_test y)) tests_int;
   List.map (fun (x, y) -> (x, run_test y)) tests_var;
   List.map (fun (x, y) -> (x, run_test y)) tests_bexp;
+  List.map (fun (x, y) -> (x, run_test y)) tests_upds;
 ])
 
 let test = fun () ->
