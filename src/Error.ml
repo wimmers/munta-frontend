@@ -38,3 +38,7 @@ let combine_map f xs = List.map f xs |> combine
 let map_errors f = function
     | Error errors -> Error (List.map f errors)
     | r -> r
+
+let rec fold_error f a = function
+    | [] -> return a
+    | x :: xs -> f a x >>= fun a -> fold_error f a xs
