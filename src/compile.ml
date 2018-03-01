@@ -54,13 +54,17 @@ type node = {
 type automaton = {
     nodes: node list;
     edges: edge list;
-    clocks: string list;
-    vars: string list;
 }
 
 type network = {
     prog: (string, int) instrc list;
     automata: (string * automaton) list;
+    clocks: string list;
+    vars: string list;
+    num_processes: int; (* p *)
+    num_clocks: int; (* m *)
+    num_actions: int; (* na *)
+    ceiling: (string * int) list; (* k *)
 }
 
 let instr x = INSTR x
@@ -140,7 +144,7 @@ let compile_node clocks vars pc ({id; label; invariant}: Parse.node_out) =
     compile_invariant clocks vars invariant >>= fun (predicate, invariant) ->
     return ({id; label; predicate = pc; invariant}, predicate)
 
-let compile_automaton pc prog name ({nodes; edges; clocks; vars}: Parse.automaton_out) =
+let compile_automaton clocks vars pc prog name ({nodes; edges}: Parse.automaton_out) =
     let compile_edges = fold_error (fun (pc, prog, es) e ->
         compile_edge clocks vars pc e >>= fun (e, guard, update) ->
         return (pc + List.length guard + List.length update + 2, prog @ guard @ [instr HALT] @ update @ [instr HALT], es @ [e]))
@@ -150,16 +154,16 @@ let compile_automaton pc prog name ({nodes; edges; clocks; vars}: Parse.automato
     in
         (compile_nodes (pc, prog, []) nodes >>= fun (pc, prog, nodes) ->
         compile_edges (pc, prog, []) edges >>= fun (pc, prog, edges) ->
-        return (pc, prog, {nodes; edges; clocks; vars})) |>
+        return (pc, prog, {nodes; edges})) |>
         map_errors (fun e -> "In " ^ name ^ ": " ^ e)
 
-let compile_network (xs: (string * Parse.automaton_out) list) =
+let compile_network ({automata; clocks; vars}: Parse.network_out) =
     let compile_automata = fold_error (fun (pc, prog, xs) (name, x) ->
-        compile_automaton pc prog name x >>= fun (pc, prog, x) ->
+        compile_automaton clocks vars pc prog name x >>= fun (pc, prog, x) ->
         return (pc, prog, xs @ [(name, x)]))
     in
-        compile_automata (0, [], []) xs >>= fun (pc, prog, xs) ->
-        return {prog; automata = xs}
+        compile_automata (0, [], []) automata >>= fun (pc, prog, xs) ->
+        return {clocks; vars; prog; automata = xs; num_processes = List.length xs; num_clocks = List.length clocks; num_actions = 0; ceiling = []}
 
 let print_node ({id; label; invariant; predicate}) =
     label ^ print_parens (string_of_int id) ^ ": " ^ string_of_int predicate ^ " : " ^ print_list print_bexp invariant
@@ -171,13 +175,13 @@ let print_edge ({source; target; guard; label; update}) =
     " : " ^ string_of_int update ^
     " --> " ^ string_of_int target
 
-let print_automaton ({nodes; edges; clocks; vars}) =
+let print_automaton ({nodes; edges}) =
     "Nodes: \n" ^ Parse.print_items print_node nodes ^ "\n\n" ^
-    "Edges: \n" ^ Parse.print_items print_edge edges ^ "\n\n" ^
-    "Clocks: \n" ^ print_list (fun x -> x) clocks ^ "\n\n" ^
-    "Vars: \n" ^ print_list (fun x -> x) vars ^ "\n\n"
+    "Edges: \n" ^ Parse.print_items print_edge edges ^ "\n\n"
 
-let print ({automata; prog}) =
+let print ({automata; prog; clocks; vars}) =
+    "Clocks: \n" ^ print_list (fun x -> x) clocks ^ "\n\n" ^
+    "Vars: \n" ^ print_list (fun x -> x) vars ^ "\n\n" ^
     "Automata: \n" ^ Parse.print_items (fun (s, x) -> s ^ ":\n\n" ^ print_automaton x) automata ^
     "Program: \n"  ^ Parse.print_items print_instrc prog
 

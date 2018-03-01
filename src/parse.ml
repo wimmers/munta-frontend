@@ -41,13 +41,21 @@ type edge_out = {
 type automaton_in = {
     nodes: node_in list;
     edges: edge_in list;
-    clocks: string;
-    vars: string;
 }
 
 type automaton_out = {
     nodes: node_out list;
     edges: edge_out list;
+}
+
+type network_in = {
+    automata: (string * automaton_in) list;
+    clocks: string;
+    vars: string;
+}
+
+type network_out = {
+    automata: (string * automaton_out) list;
     clocks: string list;
     vars: string list;
 }
@@ -66,15 +74,15 @@ let compile_edge ({source; target; guard; label; update}: edge_in) =
     parse "edge update" scan_updates update >>= fun ((guard, label), update) ->
     Result ({source; target; guard; label; update}: edge_out)
 
-let compile_automaton ({nodes; edges; clocks; vars}: automaton_in) =
-    combine_map compile_node nodes <|>
-    combine_map compile_edge edges <|>
-    parse "clocks" scan_clocks clocks <|>
-    parse "variables" scan_vars vars >>= fun (((nodes, edges), clocks), vars) ->
-    Result {nodes; edges; clocks; vars}
+let compile_automaton ({nodes; edges}: automaton_in) =
+    combine_map compile_node nodes <|> combine_map compile_edge edges >>=
+    fun (nodes, edges) -> Result {nodes; edges}
 
-let compile: (string * automaton_in) list -> (string * automaton_out) list result =
-    combine_map (fun (s, x) -> compile_automaton x |> map_errors (fun e -> s ^ ": " ^ e) >>= fun x -> Result (s, x))
+let compile ({automata; clocks; vars}: network_in) =
+    combine_map (fun (s, x) -> compile_automaton x |> map_errors (fun e -> s ^ ": " ^ e) >>= fun x -> Result (s, x)) automata <|>
+    parse "clocks" scan_clocks clocks <|>
+    parse "variables" scan_vars vars >>= fun ((automata, clocks), vars) ->
+    Result {automata; clocks; vars}
 
 let print_node ({id; label; invariant}) =
     label ^ print_parens (string_of_int id) ^ ": " ^ print_bexp invariant
@@ -88,13 +96,14 @@ let print_edge ({source; target; guard; label; update}) =
 
 let print_items print_elem xs = List.map print_elem xs |> String.concat "\n"
 
-let print_automaton ({nodes; edges; clocks; vars}) =
+let print_automaton ({nodes; edges}) =
     "Nodes: \n" ^ print_items print_node nodes ^ "\n\n" ^
-    "Edges: \n" ^ print_items print_edge edges ^ "\n\n" ^
-    "Clocks: \n" ^ print_list (fun x -> x) clocks ^ "\n\n" ^
-    "Vars: \n" ^ print_list (fun x -> x) vars ^ "\n\n"
+    "Edges: \n" ^ print_items print_edge edges ^ "\n\n"
 
-let print = print_items (fun (s, x) -> s ^ ":\n\n" ^ print_automaton x)
+let print ({automata; clocks; vars}) =
+    "Clocks: \n" ^ print_list (fun x -> x) clocks ^ "\n\n" ^
+    "Vars: \n" ^ print_list (fun x -> x) vars ^ "\n\n" ^
+    "Automata: \n" ^ print_items (fun (s, x) -> s ^ ":\n\n" ^ print_automaton x) automata
 
 let compile_and_print xs = match compile xs with
     | Result r -> "Success!\n\n" ^ print r

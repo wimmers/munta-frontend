@@ -98,14 +98,14 @@ type single_state = {
   /* graph: state, */
   selected,
   nodes: list(node),
-  edges: list(edge),
-  clocks: string,
-  vars: string
+  edges: list(edge)
 };
 
 type state = {
   automata: list((int, single_state)),
-  selected: option(int)
+  selected: option(int),
+  clocks: string,
+  vars: string
 };
 
 let init_node = v => {invariant: "", node: v};
@@ -147,21 +147,23 @@ let edge_out: edge => Parse.edge_in =
   };
 
 let automaton_out: (string, single_state) => Parse.automaton_in =
-  (label, {selected, nodes, edges, clocks, vars}) => {
+  (label, {selected, nodes, edges}) => {
     nodes: List.map(node_out, nodes),
-    edges: List.map(edge_out, edges),
-    clocks,
-    vars
+    edges: List.map(edge_out, edges)
   };
 
-let state_out = ({selected, automata}) =>
-  List.map(
-    ((i, x)) => {
-      let label = string_of_int(i);
-      (label, automaton_out(label, x));
-    },
-    automata
-  );
+let state_out = ({selected, automata, clocks, vars}) : Parse.network_in => {
+  automata:
+    List.map(
+      ((i, x)) => {
+        let label = string_of_int(i);
+        (label, automaton_out(label, x));
+      },
+      automata
+    ),
+  clocks,
+  vars
+};
 
 let onSelectNode = (v: node) => Js.log(v);
 
@@ -355,13 +357,7 @@ let renderUpdate = (~reduce, ~state: single_state) =>
   | _ => ReasonReact.nullElement
   };
 
-let empty_automaton = {
-  clocks: "",
-  vars: "",
-  nodes: [],
-  edges: [],
-  selected: Nothing
-};
+let empty_automaton = {nodes: [], edges: [], selected: Nothing};
 
 let make = (~message, _children) => {
   ...component,
@@ -370,23 +366,23 @@ let make = (~message, _children) => {
       (
         0,
         {
-          clocks: "",
-          vars: "",
           nodes: List.map(init_node, nodes),
           edges: List.map(init_edge, edges),
           selected: Nothing
         }
       )
     ],
-    selected: Some(0)
+    selected: Some(0),
+    clocks: "",
+    vars: ""
   },
-  reducer: (action: action, {selected, automata}: state) => {
+  reducer: (action: action, {selected, automata} as state: state) => {
     let mk_upd = f =>
       switch selected {
       | None => ReasonReact.NoUpdate
       | Some(key) =>
         ReasonReact.Update({
-          selected,
+          ...state,
           automata: assoc_upd_with(f, key, automata)
         })
       };
@@ -413,18 +409,20 @@ let make = (~message, _children) => {
       selected == Some(key) ?
         ReasonReact.NoUpdate :
         List.mem_assoc(key, automata) ?
-          ReasonReact.Update({selected: Some(key), automata}) :
+          ReasonReact.Update({...state, selected: Some(key)}) :
           ReasonReact.Update({
+            ...state,
             selected: Some(key),
             automata: [(key, empty_automaton), ...automata]
           })
     | DeleteAutomaton(key) =>
       ReasonReact.Update({
+        ...state,
         selected: None,
         automata: List.remove_assoc(key, automata)
       })
-    | UpdateClocks(s) => mk_upd(state => {...state, clocks: s})
-    | UpdateVars(s) => mk_upd(state => {...state, vars: s})
+    | UpdateClocks(s) => ReasonReact.Update({...state, clocks: s})
+    | UpdateVars(s) => ReasonReact.Update({...state, vars: s})
     | UpdateNodeInvariant(s) => update_node(node => {...node, invariant: s})
     | UpdateNodeLabel(s) =>
       update_node(node =>
@@ -529,24 +527,20 @@ let make = (~message, _children) => {
               />
             )
           )
-          (
-            mk_render(state =>
-              <div className="row">
-                <Declaration
-                  desc="Clocks:"
-                  placeholder="Clock Declarations"
-                  value=state.clocks
-                  onChange=(reduce(evt => UpdateClocks(evt)))
-                />
-                <Declaration
-                  desc="Vars:"
-                  placeholder="Declarations of integer variables"
-                  value=state.vars
-                  onChange=(reduce(evt => UpdateVars(evt)))
-                />
-              </div>
-            )
-          )
+          <div className="row">
+            <Declaration
+              desc="Clocks:"
+              placeholder="Clock Declarations"
+              value=state.clocks
+              onChange=(reduce(evt => UpdateClocks(evt)))
+            />
+            <Declaration
+              desc="Vars:"
+              placeholder="Declarations of integer variables"
+              value=state.vars
+              onChange=(reduce(evt => UpdateVars(evt)))
+            />
+          </div>
           (
             mk_render(state =>
               <div className="row">
