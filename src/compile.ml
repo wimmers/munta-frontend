@@ -60,7 +60,7 @@ type network = {
     prog: (string, int) instrc list;
     automata: (string * automaton) list;
     clocks: string list;
-    vars: string list;
+    vars: var list;
     num_processes: int; (* p *)
     num_clocks: int; (* m *)
     num_actions: int; (* na *)
@@ -181,7 +181,7 @@ let rec fold_ceiling_bexp ceiling = function
 
 let compile_network ({automata; clocks; vars}: Parse.network_out) =
     let compile_automata = fold_error (fun (pc, prog, xs) (name, x) ->
-        compile_automaton clocks vars pc prog name x >>= fun (pc, prog, x) ->
+        compile_automaton clocks (List.map (fun x -> x.name) vars) pc prog name x >>= fun (pc, prog, x) ->
         return (pc, prog, xs @ [(name, x)]))
     in
         compile_automata (0, [], []) automata >>= fun (pc, prog, xs) ->
@@ -217,7 +217,7 @@ let print_automaton ({nodes; edges}) =
 
 let print ({automata; prog; clocks; vars; num_processes; num_clocks; num_actions; ceiling}) =
     "Clocks: " ^ print_list (fun x -> x) clocks ^ "\n" ^
-    "Vars: " ^ print_list (fun x -> x) vars ^ "\n" ^
+    "Vars: " ^ print_list print_var vars ^ "\n" ^
     "Number of automata: " ^ string_of_int num_processes ^ "\n" ^
     "Number of actions: " ^ string_of_int num_actions ^ "\n" ^
     "Number of clocks: " ^ string_of_int num_clocks ^ "\n" ^

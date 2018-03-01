@@ -21,6 +21,7 @@ type 'a action =
   | Out of 'a
   | In of 'a
 
+type var = {name: string; lower: int; upper: int}
 
 (* Printing *)
 
@@ -49,6 +50,9 @@ let print_update x = x ^ " := 0"
 
 let print_list print_elem xs = List.map print_elem xs |> String.concat ", "
 
+let print_var ({name; lower; upper}) =
+    name ^ "[" ^ string_of_int lower ^ ":" ^ string_of_int upper ^ "]"
+
 (* Parsing *)
 
 let scan_infix_pair p q s = p <*> (str s *> q)
@@ -67,6 +71,10 @@ let str_re = [%bs.re "/[A-Za-z_]\w*/"]
 
 let scan_int = regex int_re ^^ int_of_string
 let scan_var = regex str_re
+
+let scan_var_bound =
+    (scan_var <*> (str "[" *> (scan_int <*> (str ":" *> scan_int) <* str "]"))) ^^
+    fun (name, (lower, upper)) -> {name; lower; upper}
 
 let scan_acconstraint =
     let scan s c = scan_infix_pair scan_var scan_int s ^^ (fun (x, y) -> c x y) in
@@ -131,8 +139,8 @@ let rec scan_sep_gen sep item_parser =
 
 let scan_sep sep = scan_sep_gen (str sep)
 
-let scan_vars   = scan_sep "," scan_var
-let scan_clocks = scan_vars
+let scan_vars   = scan_sep "," scan_var_bound
+let scan_clocks = scan_sep "," scan_var
 
 let scan_infix_mult p q seps =
   List.map (fun sep -> scan_infix_pair p q sep) seps |> scan_first
@@ -217,18 +225,26 @@ let tests_upds = [
   "Upd [_x:= 0 ,    Y_1AYyz_z  =0]", Success ("_x:= 0 ,    Y_1AYyz_z  =0", scan_updates, ["_x"; "Y_1AYyz_z"]);
 ]
 
+let test_clocks = [
+  "Clocks []", Success ("", scan_clocks, []);
+  "Clocks [x]", Success ("x", scan_clocks, ["x"]);
+  "Clocks [x , y]", Success ("x , y", scan_clocks, ["x"; "y"]);
+  "Clocks [x, y]", Success ("x, y", scan_clocks, ["x"; "y"]);
+  "Clocks [x,y]", Success ("x,y", scan_clocks, ["x"; "y"]);
+  "Clocks [1,y]", Success ("1,y", scan_clocks, []);
+]
+
 let test_vars = [
   "Vars []", Success ("", scan_vars, []);
-  "Vars [x]", Success ("x", scan_vars, ["x"]);
-  "Vars [x , y]", Success ("x , y", scan_vars, ["x"; "y"]);
-  "Vars [x, y]", Success ("x, y", scan_clocks, ["x"; "y"]);
-  "Vars [x,y]", Success ("x,y", scan_vars, ["x"; "y"]);
-  "Vars [1,y]", Success ("1,y", scan_vars, []);
+  "Vars [x]", Success ("x[0:10]", scan_vars, [{name = "x"; lower = 0; upper = 10}]);
+  "Vars [x, y]", Success ("x[0 :10], y [ -10: 0 ]", scan_vars, [{name = "x"; lower = 0; upper = 10}; {name = "y"; lower = -10; upper = 0}]);
 ]
 
 let evaluated_tests = List.concat([
   List.map (fun (x, y) -> (x, run_test y)) tests_int;
   List.map (fun (x, y) -> (x, run_test y)) tests_var;
+  List.map (fun (x, y) -> (x, run_test y)) test_clocks;
+  List.map (fun (x, y) -> (x, run_test y)) test_vars;
   List.map (fun (x, y) -> (x, run_test y)) tests_bexp;
   List.map (fun (x, y) -> (x, run_test y)) tests_upds;
 ])

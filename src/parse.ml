@@ -57,7 +57,7 @@ type network_in = {
 type network_out = {
     automata: (string * automaton_out) list;
     clocks: string list;
-    vars: string list;
+    vars: var list;
 }
 
 let compile_node_label (label: string) =
@@ -102,7 +102,7 @@ let print_automaton ({nodes; edges}) =
 
 let print ({automata; clocks; vars}) =
     "Clocks: \n" ^ print_list (fun x -> x) clocks ^ "\n\n" ^
-    "Vars: \n" ^ print_list (fun x -> x) vars ^ "\n\n" ^
+    "Vars: \n" ^ print_list print_var vars ^ "\n\n" ^
     "Automata: \n" ^ print_items (fun (s, x) -> s ^ ":\n\n" ^ print_automaton x) automata
 
 let compile_and_print xs = match compile xs with
