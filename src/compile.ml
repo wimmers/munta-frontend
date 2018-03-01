@@ -74,6 +74,11 @@ let map_cexp xs = List.map cexp xs
 let return_cexp x = return [CEXP x]
 let unknown_variable a = Error ["Unknown variable: " ^ a]
 
+let action_name = function
+    | Internal a -> a
+    | In a -> a
+    | Out a -> a
+
 let compile_bexp clocks vars =
     let is_clock c = List.mem c clocks
     and is_var v = List.mem v vars in
@@ -157,13 +162,44 @@ let compile_automaton clocks vars pc prog name ({nodes; edges}: Parse.automaton_
         return (pc, prog, {nodes; edges})) |>
         map_errors (fun e -> "In " ^ name ^ ": " ^ e)
 
+let update_ceiling k x v =
+    if List.mem_assoc x k then (x, max v (List.assoc x k)) :: List.remove_assoc x k else (x, v) :: k
+
+let set_add x s = if List.mem x s then s else x :: s
+
+let rec fold_ceiling_bexp ceiling = function
+    | Not   x       -> fold_ceiling_bexp ceiling x
+    | And   (a, b)  -> fold_ceiling_bexp ceiling a |> fun ceiling -> fold_ceiling_bexp ceiling b
+    | Or    (a, b)  -> fold_ceiling_bexp ceiling a |> fun ceiling -> fold_ceiling_bexp ceiling b
+    | Imply (a, b)  -> fold_ceiling_bexp ceiling a |> fun ceiling -> fold_ceiling_bexp ceiling b
+    | Lt    (x, v)  -> update_ceiling ceiling x v
+    | Le    (x, v)  -> update_ceiling ceiling x v
+    | Eq    (x, v)  -> update_ceiling ceiling x v
+    | Ge    (x, v)  -> update_ceiling ceiling x v
+    | Gt    (x, v)  -> update_ceiling ceiling x v
+    | _             -> ceiling
+
 let compile_network ({automata; clocks; vars}: Parse.network_out) =
     let compile_automata = fold_error (fun (pc, prog, xs) (name, x) ->
         compile_automaton clocks vars pc prog name x >>= fun (pc, prog, x) ->
         return (pc, prog, xs @ [(name, x)]))
     in
         compile_automata (0, [], []) automata >>= fun (pc, prog, xs) ->
-        return {clocks; vars; prog; automata = xs; num_processes = List.length xs; num_clocks = List.length clocks; num_actions = 0; ceiling = []}
+        let ceiling =
+            List.map (fun c -> (c, 0)) clocks |>
+            fun k -> List.fold_left (fun ceiling instr -> match instr with CEXP e -> fold_ceiling_bexp ceiling e | _ -> ceiling) k prog |>
+            fun k -> List.fold_left (fun k (_, x) -> List.fold_left (fun k n -> List.fold_left fold_ceiling_bexp k n.invariant) k x.nodes) k xs
+        and num_actions =
+            List.fold_left (fun s (_, x) -> List.fold_left (fun s ({label}: edge) -> set_add (action_name label) s) s x.edges) [] xs |>
+            List.length
+        in
+        return {clocks; vars; prog;
+            automata = xs;
+            num_processes = List.length xs;
+            num_clocks = List.length clocks;
+            num_actions;
+            ceiling = ceiling
+        }
 
 let print_node ({id; label; invariant; predicate}) =
     label ^ print_parens (string_of_int id) ^ ": " ^ string_of_int predicate ^ " : " ^ print_list print_bexp invariant
@@ -179,9 +215,13 @@ let print_automaton ({nodes; edges}) =
     "Nodes: \n" ^ Parse.print_items print_node nodes ^ "\n\n" ^
     "Edges: \n" ^ Parse.print_items print_edge edges ^ "\n\n"
 
-let print ({automata; prog; clocks; vars}) =
-    "Clocks: \n" ^ print_list (fun x -> x) clocks ^ "\n\n" ^
-    "Vars: \n" ^ print_list (fun x -> x) vars ^ "\n\n" ^
+let print ({automata; prog; clocks; vars; num_processes; num_clocks; num_actions; ceiling}) =
+    "Clocks: " ^ print_list (fun x -> x) clocks ^ "\n" ^
+    "Vars: " ^ print_list (fun x -> x) vars ^ "\n" ^
+    "Number of automata: " ^ string_of_int num_processes ^ "\n" ^
+    "Number of actions: " ^ string_of_int num_actions ^ "\n" ^
+    "Number of clocks: " ^ string_of_int num_clocks ^ "\n" ^
+    "Clock ceiling: \n" ^ Parse.print_items (fun (c, k) -> c ^ ": " ^ string_of_int k) ceiling ^ "\n\n" ^
     "Automata: \n" ^ Parse.print_items (fun (s, x) -> s ^ ":\n\n" ^ print_automaton x) automata ^
     "Program: \n"  ^ Parse.print_items print_instrc prog
 
