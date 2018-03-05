@@ -32,9 +32,9 @@ let print_instr print_a print_b = function
     | STOREC (a, b) -> "STOREC " ^ print_a a ^ " " ^ print_b b
     | SETF b -> if b then "SETF true" else "SETF false"
 
-let print_instrc = function
-    | INSTR x -> print_instr (fun x -> x) string_of_int x
-    | CEXP x -> "CEXP " ^ print_bexp x
+let print_instrc str = function
+    | INSTR x -> print_instr str string_of_int x
+    | CEXP x -> "CEXP " ^ print_bexp str  x
 
 type edge = {
     source: Parse.id_t;
@@ -63,7 +63,7 @@ type network = {
     vars: var list;
     num_processes: int; (* p *)
     num_clocks: int; (* m *)
-    num_actions: int; (* na *)
+    action_names: string list; (* length of this is na *)
     ceiling: (string * int) list; (* k *)
 }
 
@@ -189,25 +189,24 @@ let compile_network ({automata; clocks; vars}: Parse.network_out) =
             List.map (fun c -> (c, 0)) clocks |>
             fun k -> List.fold_left (fun ceiling instr -> match instr with CEXP e -> fold_ceiling_bexp ceiling e | _ -> ceiling) k prog |>
             fun k -> List.fold_left (fun k (_, x) -> List.fold_left (fun k n -> List.fold_left fold_ceiling_bexp k n.invariant) k x.nodes) k xs
-        and num_actions =
-            List.fold_left (fun s (_, x) -> List.fold_left (fun s ({label}: edge) -> set_add (action_name label) s) s x.edges) [] xs |>
-            List.length
+        and action_names =
+            List.fold_left (fun s (_, x) -> List.fold_left (fun s ({label}: edge) -> set_add (action_name label) s) s x.edges) [] xs
         in
         return {clocks; vars; prog;
             automata = xs;
             num_processes = List.length xs;
             num_clocks = List.length clocks;
-            num_actions;
+            action_names;
             ceiling = ceiling
         }
 
 let print_node ({id; label; invariant; predicate}) =
-    label ^ print_parens (string_of_int id) ^ ": " ^ string_of_int predicate ^ " : " ^ print_list print_bexp invariant
+    label ^ print_parens (string_of_int id) ^ ": " ^ string_of_int predicate ^ " : " ^ print_list (print_bexp (fun x -> x)) invariant
 
 let print_edge ({source; target; guard; label; update}) =
     string_of_int source ^
     " -- " ^ string_of_int guard ^
-    " : " ^ print_action label ^
+    " : " ^ print_action (fun x -> x) label ^
     " : " ^ string_of_int update ^
     " --> " ^ string_of_int target
 
@@ -215,15 +214,33 @@ let print_automaton ({nodes; edges}) =
     "Nodes: \n" ^ Parse.print_items print_node nodes ^ "\n\n" ^
     "Edges: \n" ^ Parse.print_items print_edge edges ^ "\n\n"
 
-let print ({automata; prog; clocks; vars; num_processes; num_clocks; num_actions; ceiling}) =
+let print ({automata; prog; clocks; vars; num_processes; num_clocks; action_names; ceiling}) =
     "Clocks: " ^ print_list (fun x -> x) clocks ^ "\n" ^
     "Vars: " ^ print_list print_var vars ^ "\n" ^
     "Number of automata: " ^ string_of_int num_processes ^ "\n" ^
-    "Number of actions: " ^ string_of_int num_actions ^ "\n" ^
     "Number of clocks: " ^ string_of_int num_clocks ^ "\n" ^
+    "Action names: " ^ print_list (fun x -> x) action_names ^ "\n" ^
     "Clock ceiling: \n" ^ Parse.print_items (fun (c, k) -> c ^ ": " ^ string_of_int k) ceiling ^ "\n\n" ^
     "Automata: \n" ^ Parse.print_items (fun (s, x) -> s ^ ":\n\n" ^ print_automaton x) automata ^
-    "Program: \n"  ^ Parse.print_items print_instrc prog
+    "Program: \n"  ^ Parse.print_items (print_instrc (fun x -> x)) prog
+
+let compile_and_parse xs =
+    Parse.compile xs
+    |> err_msg "Errors encountered during parsing!\n\n"
+    >>= fun r1 ->
+    compile_network r1
+    |> err_msg "Errors encountered during compiling!\n\n"
+    >>= fun r2 ->
+    "Result of parsing:\n\n" ^ Parse.print r1 ^ "\n\n\n" ^
+    "Result of compiling:\n\n" ^ print r2
+    |> return
+
+let print_result r = 
+    match r with
+    | Result r -> r
+    | Error es -> Parse.print_items (fun x -> x) es
+
+let compile_and_print2 xs = compile_and_parse xs |> print_result
 
 let compile_and_print xs = match Parse.compile xs with
     | Result r -> "Result of parsing:\n\n" ^ Parse.print r ^ "\n\n\n" ^

@@ -85,12 +85,12 @@ let compile ({automata; clocks; vars}: network_in) =
     Result {automata; clocks; vars}
 
 let print_node ({id; label; invariant}) =
-    label ^ print_parens (string_of_int id) ^ ": " ^ print_bexp invariant
+    label ^ print_parens (string_of_int id) ^ ": " ^ print_bexp (fun x -> x) invariant
 
 let print_edge ({source; target; guard; label; update}) =
     string_of_int source ^
-    " -- " ^ print_bexp guard ^
-    " : " ^ print_action label ^
+    " -- " ^ print_bexp (fun x -> x)  guard ^
+    " : " ^ print_action (fun x -> x) label ^
     " : " ^ print_list print_update update ^
     " --> " ^ string_of_int target
 

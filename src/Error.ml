@@ -11,6 +11,10 @@ let bind m f = match m with
     | Result x -> f x
     | Error es -> Error es
 
+let err_msg m = function
+    | Error es -> Error (m :: es)
+    | x -> x
+
 let combine2_gen (comb: 'a -> 'b -> 'c result) = function
     | (Error e1, Error e2) -> Error (List.append e1 e2)
     | (Error e, Result _) -> Error e
