@@ -72,14 +72,16 @@ let rename_edge f_action f_loc ({source; target; guard; label; update}: Compile.
     in f_loc source <|> f_loc target >>= fun (source, target) ->
     Result {source; target; guard; label = map_label f_action label; update}
 
-let rename_node f_bexp ({id; invariant; predicate}: Compile.node) =
-    {id; invariant = List.map f_bexp invariant; predicate}
+let rename_node f_id f_bexp ({id; invariant; predicate}: Compile.node) =
+    {id = f_id id; invariant = List.map f_bexp invariant; predicate}
 
-let rename_automaton f_action (f_clock: string -> int) ({nodes; edges}: Compile.automaton) =
+let rename_automaton f_action (f_clock: string -> int) ({nodes; edges; initial}: Compile.automaton) =
     List.map (fun ({id}: Compile.node) -> id) nodes |> mk_renaming string_of_int >>= fun f_loc ->
+    let n = f_loc initial in
+    let f_loc i = let x = f_loc i in if x = n then 0 else if x < n then x + 1 else x in
     combine_map (rename_edge f_action f_loc) edges >>= fun edges ->
     {
-        nodes = List.map (rename_node (rename_bexp f_clock (fun _ -> -1) (fun _ -> -1))) nodes;
+        nodes = List.map (rename_node f_loc (rename_bexp f_clock (fun _ -> -1) (fun _ -> -1))) nodes;
         edges
     } |> return
 

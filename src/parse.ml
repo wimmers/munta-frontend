@@ -41,11 +41,13 @@ type edge_out = {
 type automaton_in = {
     nodes: node_in list;
     edges: edge_in list;
+    initial: id_t;
 }
 
 type automaton_out = {
     nodes: node_out list;
     edges: edge_out list;
+    initial: id_t;
 }
 
 type network_in = {
@@ -74,9 +76,9 @@ let compile_edge ({source; target; guard; label; update}: edge_in) =
     parse "edge update" scan_updates update >>= fun ((guard, label), update) ->
     Result ({source; target; guard; label; update}: edge_out)
 
-let compile_automaton ({nodes; edges}: automaton_in) =
+let compile_automaton ({nodes; edges; initial}: automaton_in) =
     combine_map compile_node nodes <|> combine_map compile_edge edges >>=
-    fun (nodes, edges) -> Result {nodes; edges}
+    fun (nodes, edges) -> Result {nodes; edges; initial}
 
 let compile ({automata; clocks; vars}: network_in) =
     combine_map (fun (s, x) -> compile_automaton x |> map_errors (fun e -> s ^ ": " ^ e) >>= fun x -> Result (s, x)) automata <|>

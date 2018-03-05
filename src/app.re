@@ -97,6 +97,7 @@ type selected =
 type single_state = {
   /* graph: state, */
   selected,
+  initial: int,
   nodes: list(node),
   edges: list(edge)
 };
@@ -147,9 +148,10 @@ let edge_out: edge => Parse.edge_in =
   };
 
 let automaton_out: (string, single_state) => Parse.automaton_in =
-  (label, {selected, nodes, edges}) => {
+  (label, {selected, nodes, edges, initial}) => {
     nodes: List.map(node_out, nodes),
-    edges: List.map(edge_out, edges)
+    edges: List.map(edge_out, edges),
+    initial
   };
 
 let state_out = ({selected, automata, clocks, vars}) : Parse.network_in => {
@@ -231,6 +233,8 @@ type action =
   | DeleteAutomaton(int)
   | UpdateClocks(string)
   | UpdateVars(string)
+  | SetInitial
+  | UnsetInitial
   | UpdateNodeInvariant(string)
   | UpdateNodeLabel(string)
   | UpdateEdgeGuard(string)
@@ -247,6 +251,22 @@ type action =
   | SwapEdge(GraphView.node, GraphView.node, GraphView.edge);
 
 let component = ReasonReact.reducerComponent("App");
+
+module CheckBox = {
+  let component = ReasonReact.statelessComponent("CheckBox");
+  let make = (~onCheck, ~onUncheck, ~desc, ~checked, _children) => {
+    ...component,
+    render: self =>
+      <div className="item">
+        <input
+          _type="checkbox"
+          checked=(to_js_bool(checked))
+          onChange=(_evt => checked ? onUncheck() : onCheck())
+        />
+        (str(desc))
+      </div>
+  };
+};
 
 module Declaration = {
   let component = ReasonReact.statelessComponent("Declaration");
@@ -357,7 +377,20 @@ let renderUpdate = (~reduce, ~state: single_state) =>
   | _ => ReasonReact.nullElement
   };
 
-let empty_automaton = {nodes: [], edges: [], selected: Nothing};
+let renderInitial = (~reduce, ~state: single_state) =>
+  switch state.selected {
+  | Node(v) =>
+    <CheckBox
+      desc="Initial"
+      checked=(v.node##id == state.initial)
+      key=("IN" ++ key_of_node(v))
+      onCheck=(reduce(_evt => SetInitial))
+      onUncheck=(reduce(_evt => UnsetInitial))
+    />
+  | _ => ReasonReact.nullElement
+  };
+
+let empty_automaton = {nodes: [], edges: [], selected: Nothing, initial: (-1)};
 
 let make = (~message, _children) => {
   ...component,
@@ -368,7 +401,8 @@ let make = (~message, _children) => {
         {
           nodes: List.map(init_node, nodes),
           edges: List.map(init_edge, edges),
-          selected: Nothing
+          selected: Nothing,
+          initial: (-1)
         }
       )
     ],
@@ -423,6 +457,11 @@ let make = (~message, _children) => {
       })
     | UpdateClocks(s) => ReasonReact.Update({...state, clocks: s})
     | UpdateVars(s) => ReasonReact.Update({...state, vars: s})
+    | SetInitial =>
+      mk_upd(automaton =>
+        {...automaton, initial: selected_node(automaton.selected).node##id}
+      )
+    | UnsetInitial => mk_upd(automaton => {...automaton, initial: (-1)})
     | UpdateNodeInvariant(s) => update_node(node => {...node, invariant: s})
     | UpdateNodeLabel(s) =>
       update_node(node =>
@@ -461,9 +500,7 @@ let make = (~message, _children) => {
         let edges = removeEdge(edge, state.edges);
         {...state, edges};
       })
-    | CreateNode(x, y) =>
-      Js.log("Create node");
-      mk_upd(state => onCreateNode(state, x, y));
+    | CreateNode(x, y) => mk_upd(state => onCreateNode(state, x, y))
     | CreateEdge(v, w) => mk_upd(state => onCreateEdge(state, v, w))
     | SwapEdge(v, w, e) => mk_upd(state => onSwapEdge(state, v, w, e))
     | UpdateNode(node) =>
@@ -544,9 +581,10 @@ let make = (~message, _children) => {
           (
             mk_render(state =>
               <div className="row">
-                (renderUpdate(reduce, state))
-                (renderGuard(reduce, state))
-                (renderLabel(reduce, state))
+                (renderUpdate(~reduce, ~state))
+                (renderGuard(~reduce, ~state))
+                (renderLabel(~reduce, ~state))
+                (renderInitial(~reduce, ~state))
               </div>
             )
           )

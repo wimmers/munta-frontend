@@ -54,6 +54,7 @@ type node = {
 type automaton = {
     nodes: node list;
     edges: edge list;
+    initial: Parse.id_t;
 }
 
 type network = {
@@ -149,7 +150,7 @@ let compile_node clocks vars pc ({id; label; invariant}: Parse.node_out) =
     compile_invariant clocks vars invariant >>= fun (predicate, invariant) ->
     return ({id; label; predicate = pc; invariant}, predicate)
 
-let compile_automaton clocks vars pc prog name ({nodes; edges}: Parse.automaton_out) =
+let compile_automaton clocks vars pc prog name ({nodes; edges; initial}: Parse.automaton_out) =
     let compile_edges = fold_error (fun (pc, prog, es) e ->
         compile_edge clocks vars pc e >>= fun (e, guard, update) ->
         return (pc + List.length guard + List.length update + 2, prog @ guard @ [instr HALT] @ update @ [instr HALT], es @ [e]))
@@ -159,8 +160,10 @@ let compile_automaton clocks vars pc prog name ({nodes; edges}: Parse.automaton_
     in
         (compile_nodes (pc, prog, []) nodes >>= fun (pc, prog, nodes) ->
         compile_edges (pc, prog, []) edges >>= fun (pc, prog, edges) ->
-        return (pc, prog, {nodes; edges})) |>
-        map_errors (fun e -> "In " ^ name ^ ": " ^ e)
+        return (pc, prog, {nodes; edges; initial})
+        |> assert_msg (initial >= 0) "No initial state"
+        |> assert_msg (List.map (fun {id} -> id) nodes |> List.mem initial) "Initial state unknown"
+        ) |> map_errors (fun e -> "In " ^ name ^ ": " ^ e)
 
 let update_ceiling k x v =
     if List.mem_assoc x k then (x, max v (List.assoc x k)) :: List.remove_assoc x k else (x, v) :: k

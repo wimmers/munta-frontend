@@ -15,6 +15,12 @@ let err_msg m = function
     | Error es -> Error (m :: es)
     | x -> x
 
+let make_err m = function
+    | Error es -> Error (es @ [m])
+    | _ -> Error [m]
+
+let assert_msg b m = if b then (fun x -> x) else make_err m
+
 let combine2_gen (comb: 'a -> 'b -> 'c result) = function
     | (Error e1, Error e2) -> Error (List.append e1 e2)
     | (Error e, Result _) -> Error e
