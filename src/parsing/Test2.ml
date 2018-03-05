@@ -28,23 +28,23 @@ type var = {name: string; lower: int; upper: int}
 let print_parens s = "(" ^ s ^ ")"
 let print_infix sep a b = a ^ " " ^ sep ^ " " ^ b
 
-let rec print_bexp = function
+let rec print_bexp str = function
   | True -> "true"
-  | Not e -> print_bexp e |> print_parens
-  | And (e1, e2) -> print_infix "&&" (print_bexp e1 |> print_parens) (print_bexp e2 |> print_parens)
-  | Or (e1, e2) -> print_infix "||" (print_bexp e1 |> print_parens) (print_bexp e2 |> print_parens)
-  | Imply (e1, e2) -> print_infix "-->" (print_bexp e1 |> print_parens) (print_bexp e2 |> print_parens)
-  | Lt (x, c) -> print_infix "<" x (string_of_int c)
-  | Le (x, c) -> print_infix "<=" x (string_of_int c)
-  | Eq (x, c) -> print_infix "=" x (string_of_int c)
-  | Ge (x, c) -> print_infix ">=" x (string_of_int c)
-  | Gt (x, c) -> print_infix ">" x (string_of_int c)
-  | Loc (s, x) -> s ^ "." ^ x
+  | Not e -> print_bexp str e |> print_parens
+  | And (e1, e2) -> print_infix "&&" (print_bexp str e1 |> print_parens) (print_bexp str e2 |> print_parens)
+  | Or (e1, e2) -> print_infix "||" (print_bexp str e1 |> print_parens) (print_bexp str e2 |> print_parens)
+  | Imply (e1, e2) -> print_infix "-->" (print_bexp str e1 |> print_parens) (print_bexp str e2 |> print_parens)
+  | Lt (x, c) -> print_infix "<" (str x) (string_of_int c)
+  | Le (x, c) -> print_infix "<=" (str x) (string_of_int c)
+  | Eq (x, c) -> print_infix "=" (str x) (string_of_int c)
+  | Ge (x, c) -> print_infix ">=" (str x) (string_of_int c)
+  | Gt (x, c) -> print_infix ">" (str x) (string_of_int c)
+  | Loc (s, x) -> str s ^ "." ^ str x
 
-let print_action = function
-  | Internal x -> x
-  | Out x -> x ^ "!"
-  | In x -> x ^ "?"
+let print_action str = function
+  | Internal x -> str x
+  | Out x -> str x ^ "!"
+  | In x -> str x ^ "?"
 
 let print_update x = x ^ " := 0"
 
