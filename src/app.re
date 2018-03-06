@@ -600,7 +600,7 @@ let make = (~message, _children) => {
           <input _type="button" className=button_class value="Compile!" />
         </div>
         <div>
-          <pre> (str(state_out(state) |> Rename.rename_and_print)) </pre>
+          <pre> (str(state_out(state) |> Print_munta.rename_and_print)) </pre>
         </div>
       </div>;
     /* <Test />; */
