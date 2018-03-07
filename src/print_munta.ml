@@ -5,6 +5,7 @@ open Rename;;
 
 let groupBy key xs =
     let rec group = function
+        | ([], [])  -> []
         | ([], grp) -> [grp]
         | (x :: xs, []) -> group (xs, [x])
         | (x :: xs, (y :: ys as zs)) when key x = key y -> group (xs, x :: zs)
