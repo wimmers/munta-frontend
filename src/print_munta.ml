@@ -3,6 +3,24 @@ open Error;;
 open Compile;;
 open Rename;;
 
+let groupBy key xs =
+    let rec group = function
+        | ([], grp) -> [grp]
+        | (x :: xs, []) -> group (xs, [x])
+        | (x :: xs, (y :: ys as zs)) when key x = key y -> group (xs, x :: zs)
+        | (x :: xs, (y :: ys as zs)) -> zs :: group (xs, [x])
+    in
+    xs |> List.sort (fun a b -> key a - key b) |> fun xs -> group (xs, [])
+
+let rec fill_groups key = function
+    | ([], _) -> []
+    | (_ :: xs, []) -> [] :: fill_groups key (xs, [])
+    | (x :: xs, (y :: ys) :: zs) when key y = x -> (y :: ys) :: fill_groups key (xs, zs)
+    | (x :: xs, (y :: ys) :: zs) -> [] :: fill_groups key (xs, (y :: ys) :: zs)
+
+let upto l u =
+    let rec upt l u = if l >= u then [] else u - 1 :: upt l (u - 1) in upt l u |> List.rev
+
 let print_list print_elem xs = "[" ^ Test2.print_list print_elem xs ^ "]"
 let print_pair str1 str2 (a, b) = "(" ^ str1 a ^ ", " ^ str2 b ^ ")"
 
@@ -64,7 +82,11 @@ let print_edge ({target; guard; label; update}) =
     ", " ^ string_of_int target ^
     ")"
 
-let print_edges = print_list (fun {edges} -> print_list print_edge edges)
+let print_edges = print_list (fun {nodes; edges} ->
+    edges
+    |> groupBy (fun {source} -> source)
+    |> fun xs -> fill_groups (fun {source} -> source) (upto 0 (List.length nodes), xs)
+    |> (print_list print_edge |> print_list))
 
 let print_ceiling = print_list string_of_int
 
