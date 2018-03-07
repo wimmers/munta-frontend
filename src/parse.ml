@@ -54,12 +54,14 @@ type network_in = {
     automata: (string * automaton_in) list;
     clocks: string;
     vars: string;
+    formula: string;
 }
 
 type network_out = {
     automata: (string * automaton_out) list;
     clocks: string list;
     vars: var list;
+    formula: (string, int) formula;
 }
 
 let compile_node_label (label: string) =
@@ -80,11 +82,12 @@ let compile_automaton ({nodes; edges; initial}: automaton_in) =
     combine_map compile_node nodes <|> combine_map compile_edge edges >>=
     fun (nodes, edges) -> Result {nodes; edges; initial}
 
-let compile ({automata; clocks; vars}: network_in) =
+let compile ({automata; clocks; vars; formula}: network_in) =
     combine_map (fun (s, x) -> compile_automaton x |> map_errors (fun e -> s ^ ": " ^ e) >>= fun x -> Result (s, x)) automata <|>
     parse "clocks" scan_clocks clocks <|>
-    parse "variables" scan_vars vars >>= fun ((automata, clocks), vars) ->
-    Result {automata; clocks; vars}
+    parse "variables" scan_vars vars <|>
+    parse "formula" scan_formula formula >>= fun (((automata, clocks), vars), formula) ->
+    Result {automata; clocks; vars; formula}
 
 let print_node ({id; label; invariant}) =
     label ^ print_parens (string_of_int id) ^ ": " ^ print_bexp (fun x -> x) invariant
@@ -102,7 +105,8 @@ let print_automaton ({nodes; edges}) =
     "Nodes: \n" ^ print_items print_node nodes ^ "\n\n" ^
     "Edges: \n" ^ print_items print_edge edges ^ "\n\n"
 
-let print ({automata; clocks; vars}) =
+let print ({automata; clocks; vars; formula}) =
+    "Formula: \n" ^ print_formula (fun x -> x) formula ^ "\n\n" ^
     "Clocks: \n" ^ print_list (fun x -> x) clocks ^ "\n\n" ^
     "Vars: \n" ^ print_list print_var vars ^ "\n\n" ^
     "Automata: \n" ^ print_items (fun (s, x) -> s ^ ":\n\n" ^ print_automaton x) automata

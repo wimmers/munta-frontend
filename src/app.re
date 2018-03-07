@@ -103,10 +103,11 @@ type single_state = {
 };
 
 type state = {
-  automata: list((int, single_state)),
+  automata: list((int, (string, single_state))),
   selected: option(int),
   clocks: string,
-  vars: string
+  vars: string,
+  formula: string
 };
 
 let init_node = v => {invariant: "", node: v};
@@ -154,17 +155,14 @@ let automaton_out: (string, single_state) => Parse.automaton_in =
     initial
   };
 
-let state_out = ({selected, automata, clocks, vars}) : Parse.network_in => {
+let state_out =
+    ({selected, automata, clocks, vars, formula})
+    : Parse.network_in => {
   automata:
-    List.map(
-      ((i, x)) => {
-        let label = string_of_int(i);
-        (label, automaton_out(label, x));
-      },
-      automata
-    ),
+    List.map(((_, (label, x))) => (label, automaton_out(label, x)), automata),
   clocks,
-  vars
+  vars,
+  formula
 };
 
 let onSelectNode = (v: node) => Js.log(v);
@@ -233,6 +231,7 @@ type action =
   | DeleteAutomaton(int)
   | UpdateClocks(string)
   | UpdateVars(string)
+  | UpdateFormula(string)
   | SetInitial
   | UnsetInitial
   | UpdateNodeInvariant(string)
@@ -264,6 +263,26 @@ module CheckBox = {
           onChange=(_evt => checked ? onUncheck() : onCheck())
         />
         (str(desc))
+      </div>
+  };
+};
+
+module FormulaBox = {
+  let component = ReasonReact.statelessComponent("Formula");
+  let make = (~desc, ~placeholder, ~onChange, ~value, _children) => {
+    ...component,
+    render: _self =>
+      <div className="form-group col-md-3">
+        <label htmlFor="text-box"> (str(desc)) </label>
+        <input
+          _type="text"
+          id="text-input"
+          className="form-control"
+          cols=20
+          placeholder
+          onChange=(evt => onChange(valueFromEvent(evt)))
+          value
+        />
       </div>
   };
 };
@@ -398,17 +417,21 @@ let make = (~message, _children) => {
     automata: [
       (
         0,
-        {
-          nodes: List.map(init_node, nodes),
-          edges: List.map(init_edge, edges),
-          selected: Nothing,
-          initial: (-1)
-        }
+        (
+          "New Automaton",
+          {
+            nodes: List.map(init_node, nodes),
+            edges: List.map(init_edge, edges),
+            selected: Nothing,
+            initial: (-1)
+          }
+        )
       )
     ],
     selected: Some(0),
     clocks: "",
-    vars: ""
+    vars: "",
+    formula: ""
   },
   reducer: (action: action, {selected, automata} as state: state) => {
     let mk_upd = f =>
@@ -417,7 +440,8 @@ let make = (~message, _children) => {
       | Some(key) =>
         ReasonReact.Update({
           ...state,
-          automata: assoc_upd_with(f, key, automata)
+          automata:
+            assoc_upd_with(((label, x)) => (label, f(x)), key, automata)
         })
       };
     let update_node = upd =>
@@ -441,13 +465,20 @@ let make = (~message, _children) => {
     switch action {
     | ChangeAutomaton(key, value) =>
       selected == Some(key) ?
-        ReasonReact.NoUpdate :
+        ReasonReact.Update({
+          ...state,
+          automata: assoc_upd_with(((_k, x)) => (value, x), key, automata)
+        }) :
         List.mem_assoc(key, automata) ?
-          ReasonReact.Update({...state, selected: Some(key)}) :
           ReasonReact.Update({
             ...state,
             selected: Some(key),
-            automata: [(key, empty_automaton), ...automata]
+            automata: assoc_upd_with(((_k, x)) => (value, x), key, automata)
+          }) :
+          ReasonReact.Update({
+            ...state,
+            selected: Some(key),
+            automata: [(key, (value, empty_automaton)), ...automata]
           })
     | DeleteAutomaton(key) =>
       ReasonReact.Update({
@@ -461,6 +492,7 @@ let make = (~message, _children) => {
       mk_upd(automaton =>
         {...automaton, initial: selected_node(automaton.selected).node##id}
       )
+    | UpdateFormula(s) => ReasonReact.Update({...state, formula: s})
     | UnsetInitial => mk_upd(automaton => {...automaton, initial: (-1)})
     | UpdateNodeInvariant(s) => update_node(node => {...node, invariant: s})
     | UpdateNodeLabel(s) =>
@@ -519,7 +551,7 @@ let make = (~message, _children) => {
     let mk_render = f =>
       switch state.selected {
       | None => ReasonReact.nullElement
-      | Some(key) => f(List.assoc(key, state.automata))
+      | Some(key) => List.assoc(key, state.automata) |> snd |> f
       };
     <div className="container">
       /* <div className="App-header">
@@ -588,6 +620,14 @@ let make = (~message, _children) => {
               </div>
             )
           )
+          <div className="row">
+            <FormulaBox
+              desc="Formula:"
+              placeholder="Formula"
+              value=state.formula
+              onChange=(reduce(evt => UpdateFormula(evt)))
+            />
+          </div>
           <ItemList
             onChangeFocus=(
               reduce(x => {

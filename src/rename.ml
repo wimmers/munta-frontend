@@ -29,11 +29,12 @@ type network = {
     num_clocks: int; (* m *)
     num_actions: int; (* na *)
     ceiling: int list; (* k *)
+    formula: (int, int) formula;
 }
 
 let rec rename_bexp f g h = function
   | True -> True
-  | Not e -> rename_bexp f g h e
+  | Not e -> Not (rename_bexp f g h e)
   | And (e1, e2) -> And (rename_bexp f g h e1, rename_bexp f g h e2)
   | Or (e1, e2) -> Or (rename_bexp f g h e1, rename_bexp f g h e2)
   | Imply (e1, e2) -> Imply (rename_bexp f g h e1, rename_bexp f g h e2)
@@ -42,7 +43,16 @@ let rec rename_bexp f g h = function
   | Eq (x, c) -> Eq (f x, c)
   | Ge (x, c) -> Ge (f x, c)
   | Gt (x, c) -> Gt (f x, c)
-  | Loc (s, x) -> Loc (g s, h x)
+  | Loc (s, x) -> Loc (g s, h s x)
+
+let map_formula f = function
+    | EX e -> EX (f e)
+    | EG e -> EG (f e)
+    | AX e -> AX (f e)
+    | AG e -> AG (f e)
+    | Leadsto (e1, e2) -> Leadsto (f e1, f e2)
+
+let rename_formula f g h = map_formula (rename_bexp f g h) 
 
 let rename_instr rename_vars (rename_clocks: string -> int) = function
     | JMPZ a -> JMPZ (rename_vars a) (* Problematic but do not have jumps for now *)
@@ -54,7 +64,7 @@ let rename_instr rename_vars (rename_clocks: string -> int) = function
     | PUSH x -> PUSH x | POP -> POP | SETF b -> SETF b
 
 let rename_instrc rename_vars (rename_clocks: string -> int) = function
-    | CEXP e -> CEXP (rename_bexp rename_clocks (fun x -> -1) (fun x -> -1) e)
+    | CEXP e -> CEXP (rename_bexp rename_clocks (fun _ -> -1) (fun _ _ -> -1) e)
     | INSTR e -> INSTR (rename_instr rename_vars rename_clocks e)
 
 let mk_renaming str xs =
@@ -78,23 +88,31 @@ let rename_node f_id f_bexp ({id; invariant; predicate}: Compile.node) =
 let rename_automaton f_action (f_clock: string -> int) ({nodes; edges; initial}: Compile.automaton) =
     List.map (fun ({id}: Compile.node) -> id) nodes |> mk_renaming string_of_int >>= fun f_loc ->
     let n = f_loc initial in
-    let f_loc i = let x = f_loc i in if x = n then 0 else if x < n then x + 1 else x in
+    let f_loc i = let x = f_loc i in if x = n then 0 else if x < n then x + 1 else x
+    and labs = List.map (fun ({id; label}: Compile.node) -> (label, id)) nodes in
+    let f_lab x = List.assoc x labs |> f_loc in
     combine_map (rename_edge f_action f_loc) edges >>= fun edges ->
-    {
-        nodes = List.map (rename_node f_loc (rename_bexp f_clock (fun _ -> -1) (fun _ -> -1))) nodes;
+    ({
+        nodes = List.map (rename_node f_loc (rename_bexp f_clock (fun _ -> -1) (fun _ _ -> -1))) nodes;
         edges
-    } |> return
+    }, f_lab) |> return
 
-let rename_network ({automata; prog; clocks; vars; num_processes; num_clocks; action_names; ceiling}: Compile.network) =
+let rename_network ({automata; prog; clocks; vars; num_processes; num_clocks; action_names; ceiling; formula}: Compile.network) =
     let mk_renaming = mk_renaming (fun x -> x) in
-    mk_renaming action_names <|> mk_renaming clocks <|> mk_renaming (List.map (fun x -> x.name) vars) >>= fun ((f_action, f_clock), f_var) ->
-    combine_map (fun (_, x) -> rename_automaton f_action f_clock x) automata >>= fun automata ->
+    mk_renaming action_names <|> mk_renaming clocks <|> mk_renaming (List.map (fun x -> x.name) vars) <|>
+    mk_renaming (List.map fst automata) >>= fun (((f_action, f_clock), f_var), f_automata) ->
+    combine_map (fun (k, x) -> rename_automaton f_action f_clock x >>= fun a -> return (k, a)) automata >>= fun automata ->
     let prog = List.map (rename_instrc f_var f_clock) prog
     and num_actions = List.length action_names
     and vars = List.map (fun {lower; upper} -> (lower, upper)) vars
     and ceiling = ceiling |> List.sort (fun (i, _) (j, _) -> f_clock i - f_clock j) |> List.map snd
+    and f_pair = fun a x -> snd (List.assoc a automata) x
     in
-       return {automata; prog; vars; num_processes; num_clocks; num_actions; ceiling}
+       return {
+           automata = List.map (fun x -> snd x |> fst) automata;
+           formula = rename_formula f_var f_automata f_pair formula;
+           prog; vars; num_processes; num_clocks; num_actions; ceiling
+        }
 
 let print_node ({id; invariant; predicate}) =
     string_of_int id ^ ": " ^ string_of_int predicate ^ " : " ^ print_list (print_bexp string_of_int) invariant
@@ -110,7 +128,8 @@ let print_automaton ({nodes; edges}) =
     "Nodes: \n" ^ Parse.print_items print_node nodes ^ "\n\n" ^
     "Edges: \n" ^ Parse.print_items print_edge edges ^ "\n\n"
 
-let print ({automata; prog; vars; num_processes; num_clocks; num_actions; ceiling}) =
+let print ({automata; prog; vars; num_processes; num_clocks; num_actions; ceiling; formula}) =
+    "Formula: " ^ Test2.print_formula string_of_int formula ^ "\n" ^
     "Vars: " ^ print_list (fun (l, u) -> "["^string_of_int l ^ ":" ^ string_of_int u ^ "]") vars ^ "\n" ^
     "Number of automata: " ^ string_of_int num_processes ^ "\n" ^
     "Number of clocks: " ^ string_of_int num_clocks ^ "\n" ^

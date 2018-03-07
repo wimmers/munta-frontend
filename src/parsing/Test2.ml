@@ -30,7 +30,7 @@ let print_infix sep a b = a ^ " " ^ sep ^ " " ^ b
 
 let rec print_bexp str = function
   | True -> "true"
-  | Not e -> print_bexp str e |> print_parens
+  | Not e -> print_bexp str e |> print_parens |> fun s -> "Not " ^ s
   | And (e1, e2) -> print_infix "&&" (print_bexp str e1 |> print_parens) (print_bexp str e2 |> print_parens)
   | Or (e1, e2) -> print_infix "||" (print_bexp str e1 |> print_parens) (print_bexp str e2 |> print_parens)
   | Imply (e1, e2) -> print_infix "-->" (print_bexp str e1 |> print_parens) (print_bexp str e2 |> print_parens)
@@ -40,6 +40,15 @@ let rec print_bexp str = function
   | Ge (x, c) -> print_infix ">=" (str x) (string_of_int c)
   | Gt (x, c) -> print_infix ">" (str x) (string_of_int c)
   | Loc (s, x) -> str s ^ "." ^ str x
+
+let print_formula str =
+  let print = print_bexp str in
+  function
+  | EX f -> "E<> " ^ print f
+  | EG f -> "E[] " ^ print f
+  | AX f -> "A<> " ^ print f
+  | AG f -> "A[]"  ^ print f
+  | Leadsto (f, g) -> print f ^ " ---> " ^ print g
 
 let print_action str = function
   | Internal x -> str x
@@ -125,13 +134,13 @@ let scan_prefix p head = str head *> p
 
 let scan_formula =
   let scan_bexp = scan_bexp scan_bexp_elem in
-  scan_parens "(" ")" (scan_first [
-  scan_prefix scan_bexp "EX" ^^ (fun x -> EX x);
-  scan_prefix scan_bexp "EG" ^^ (fun x -> EG x);
-  scan_prefix scan_bexp "AX" ^^ (fun x -> AX x);
-  scan_prefix scan_bexp "AG" ^^ (fun x -> AG x);
+  scan_first [
+  scan_prefix scan_bexp "E<>" ^^ (fun x -> EX x);
+  scan_prefix scan_bexp "E[]" ^^ (fun x -> EG x);
+  scan_prefix scan_bexp "A<>" ^^ (fun x -> AX x);
+  scan_prefix scan_bexp "A[]" ^^ (fun x -> AG x);
   scan_infix_pair scan_bexp scan_bexp "-->" ^^ (fun (x, y) -> Leadsto (x, y))
-  ])
+  ]
 
 let rec scan_sep_gen sep item_parser =
     ((item_parser <*> rep (sep *> item_parser)) ^^ (fun (x, y) -> x :: y)) <|>

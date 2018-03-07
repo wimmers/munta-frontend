@@ -26,10 +26,10 @@ let print_list print_elem xs = "[" ^ Test2.print_list print_elem xs ^ "]"
 let print_pair str1 str2 (a, b) = "(" ^ str1 a ^ ", " ^ str2 b ^ ")"
 
 let print_pairc constr str1 str2 (a, b) =
-    constr ^ "(" ^ str1 a ^ ", " ^ str2 b ^ ")"
+    constr ^ " (" ^ str1 a ^ ", " ^ str2 b ^ ")"
 
 let print_singlec constr str a =
-    constr ^ "(" ^ str a ^ ")"
+    constr ^ " (" ^ str a ^ ")"
 
 let print_action str = function
   | Internal x -> "Sil " ^ str x
@@ -48,7 +48,7 @@ function
   | _ -> "FAIL"
 
 let rec print_bexp str =
-    let print_bin constr = print_pairc constr (print_bexp str) (print_bexp str)
+    let print_bin constr (a, b) = print_infix constr (print_bexp str a |> print_parens) (print_bexp str b |> print_parens)
     and print_cmp constr = print_pairc constr str string_of_int
     in
 function
@@ -63,6 +63,15 @@ function
   | Ge (x, c) -> print_cmp "Ge'" (x, c)
   | Gt (x, c) -> print_cmp "Gt'" (x, c)
   | Loc (s, x) -> print_pairc "Loc'" str str (s, x)
+
+let print_formula str =
+  let print = print_bexp str in
+  function
+  | EX f -> "EX " ^ print f
+  | EG f -> "EG " ^ print f
+  | AX f -> "AX " ^ print f
+  | AG f -> "AG"  ^ print f
+  | Leadsto (f, g) -> print f ^ " ---> " ^ print g
 
 let print_invariant ({nodes}) =
     nodes |> print_list (fun {invariant} ->
@@ -120,7 +129,7 @@ let print_bounds = print_pair string_of_int string_of_int |> print_list
 
 let rec repeat x n = if n <= 0 then [] else x :: repeat x (n - 1)
 
-let print ({automata; prog; vars; num_processes; num_clocks; num_actions; ceiling}) =
+let print ({automata; prog; vars; num_processes; num_clocks; num_actions; ceiling; formula}) =
     Parse.print_items (fun x -> x) [
         string_of_int num_processes;
         string_of_int num_clocks;
@@ -129,6 +138,7 @@ let print ({automata; prog; vars; num_processes; num_clocks; num_actions; ceilin
         print_invariants automata;
         print_edges automata;
         print_prog prog;
+        print_formula string_of_int formula;
         print_bounds vars;
         print_predicates automata;
         repeat 0 (List.length vars) |> print_list string_of_int;

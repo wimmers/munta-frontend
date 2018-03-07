@@ -66,6 +66,7 @@ type network = {
     num_clocks: int; (* m *)
     action_names: string list; (* length of this is na *)
     ceiling: (string * int) list; (* k *)
+    formula: (string, int) formula;
 }
 
 let instr x = INSTR x
@@ -79,6 +80,46 @@ let action_name = function
     | Internal a -> a
     | In a -> a
     | Out a -> a
+
+let check_bexp automata clocks vars =
+    let is_clock c = List.mem c clocks
+    and is_var v = List.mem v (List.map (fun {name} -> name) vars)
+    in let check_cmp a b =
+        if is_var a then return ()
+        else if is_clock a then Error ["Clocks are not supported in formula"]
+        else unknown_variable a
+    and check_location a x =
+        let matches = List.filter (fun (b, _) -> a = b) automata in
+        if List.length matches = 0 then Error ["Unknown process: " ^ a ^ " " ^ print_list (fun x -> x) (List.map fst automata)]
+        else if List.length matches > 1 then Error ["Ambiguous process name: " ^ a]
+        else let {nodes} = snd (List.hd matches) in
+        let names = List.map (fun {label} -> label) nodes
+        in let matches = List.filter (fun y -> x = y) names in
+        if List.length matches = 0 then Error ["Unknown location: " ^ a]
+        else if List.length matches > 1 then Error ["Ambiguous location name: " ^ a]
+        else return ()
+    in let rec check = function
+        | True -> Error ["True is not supported in formula"]
+        | Not e -> check e
+        | And (a, b)   -> check a <|> check b >>= fun _ -> return ()
+        | Or (a, b)    -> check a <|> check b >>= fun _ -> return ()
+        | Imply (a, b) -> check a <|> check b >>= fun _ -> return ()
+        | Lt (a, b) -> check_cmp a b
+        | Le (a, b) -> check_cmp a b
+        | Eq (a, b) -> check_cmp a b
+        | Ge (a, b) -> check_cmp a b
+        | Gt (a, b) -> check_cmp a b
+        | Loc (a, x) -> check_location a x
+    in check
+
+let check_formula automata clocks vars =
+    let check = check_bexp automata clocks vars in
+    function
+    | EX f -> check f
+    | EG f -> check f
+    | AX f -> check f
+    | EG f -> check f
+    | Leadsto (f, g) -> check f <|> check g >>= fun _ -> return ()
 
 let compile_bexp clocks vars =
     let is_clock c = List.mem c clocks
@@ -182,7 +223,7 @@ let rec fold_ceiling_bexp ceiling = function
     | Gt    (x, v)  -> update_ceiling ceiling x v
     | _             -> ceiling
 
-let compile_network ({automata; clocks; vars}: Parse.network_out) =
+let compile_network ({automata; clocks; vars; formula}: Parse.network_out) =
     let compile_automata = fold_error (fun (pc, prog, xs) (name, x) ->
         compile_automaton clocks (List.map (fun x -> x.name) vars) pc prog name x >>= fun (pc, prog, x) ->
         return (pc, prog, xs @ [(name, x)]))
@@ -195,12 +236,14 @@ let compile_network ({automata; clocks; vars}: Parse.network_out) =
         and action_names =
             List.fold_left (fun s (_, x) -> List.fold_left (fun s ({label}: edge) -> set_add (action_name label) s) s x.edges) [] xs
         in
+        check_formula xs clocks vars formula >>= fun () ->
         return {clocks; vars; prog;
             automata = xs;
             num_processes = List.length xs;
             num_clocks = List.length clocks;
             action_names;
-            ceiling = ceiling
+            ceiling = ceiling;
+            formula
         }
 
 let print_node ({id; label; invariant; predicate}) =
