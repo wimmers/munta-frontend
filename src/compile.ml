@@ -90,7 +90,7 @@ let check_bexp automata clocks vars =
         else unknown_variable a
     and check_location a x =
         let matches = List.filter (fun (b, _) -> a = b) automata in
-        if List.length matches = 0 then Error ["Unknown process: " ^ a ^ " " ^ print_list (fun x -> x) (List.map fst automata)]
+        if List.length matches = 0 then Error ["Unknown process: " ^ a]
         else if List.length matches > 1 then Error ["Ambiguous process name: " ^ a]
         else let {nodes} = snd (List.hd matches) in
         let names = List.map (fun {label} -> label) nodes

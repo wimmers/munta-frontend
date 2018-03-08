@@ -101,6 +101,7 @@ let rename_network ({automata; prog; clocks; vars; num_processes; num_clocks; ac
     let mk_renaming = mk_renaming (fun x -> x) in
     mk_renaming action_names <|> mk_renaming clocks <|> mk_renaming (List.map (fun x -> x.name) vars) <|>
     mk_renaming (List.map fst automata) >>= fun (((f_action, f_clock), f_var), f_automata) ->
+    let f_clock = fun x -> f_clock x + 1 in
     combine_map (fun (k, x) -> rename_automaton f_action f_clock x >>= fun a -> return (k, a)) automata >>= fun automata ->
     let prog = List.map (rename_instrc f_var f_clock) prog
     and num_actions = List.length action_names

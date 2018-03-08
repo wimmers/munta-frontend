@@ -75,7 +75,7 @@ let print_formula str =
 
 let print_invariant ({nodes}) =
     nodes |> print_list (fun {invariant} ->
-        print_list (print_bexp string_of_int) invariant
+        print_list (print_acconstraint string_of_int) invariant
     )
 
 let print_invariants = print_list print_invariant
@@ -121,7 +121,7 @@ let print_instr print_a print_b = function
 
 let print_instrc str = function
     | INSTR x -> "SOME (INSTR' (" ^ print_instr str string_of_int x ^ "))"
-    | CEXP x -> "SOME (CEXP' (" ^ print_bexp str  x ^ "))"
+    | CEXP x -> "SOME (CEXP' (" ^ print_acconstraint str  x ^ "))"
 
 let print_prog = print_instrc string_of_int |> print_list
 
@@ -130,15 +130,15 @@ let print_bounds = print_pair string_of_int string_of_int |> print_list
 let rec repeat x n = if n <= 0 then [] else x :: repeat x (n - 1)
 
 let print ({automata; prog; vars; num_processes; num_clocks; num_actions; ceiling; formula}) =
-    Parse.print_items (fun x -> x) [
+    String.concat " " [
         string_of_int num_processes;
         string_of_int num_clocks;
-        print_ceiling ceiling;
+        print_ceiling (0 :: ceiling);
         "10000";
         print_invariants automata;
         print_edges automata;
         print_prog prog;
-        print_formula string_of_int formula;
+        "(" ^ print_formula string_of_int formula  ^ ")";
         print_bounds vars;
         print_predicates automata;
         repeat 0 (List.length vars) |> print_list string_of_int;
