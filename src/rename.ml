@@ -139,14 +139,17 @@ let print ({automata; prog; vars; num_processes; num_clocks; num_actions; ceilin
     "Automata: \n" ^ Parse.print_items print_automaton automata ^
     "Program: \n"  ^ Parse.print_items (print_instrc string_of_int) prog
 
-let parse_compile_print xs =
+let parse_compile xs =
     Parse.compile xs
     |> err_msg "Errors encountered during parsing!\n\n"
     >>= fun r1 -> compile_network r1
     |> err_msg "Errors encountered during compiling!\n\n"
     >>= fun r2 -> rename_network r2
     |> err_msg "Errors encountered during renaming!\n\n"
-    >>= fun r3 ->
+    >>= fun r3 -> return (r1, r2, r3)
+
+let parse_compile_print xs =
+    parse_compile xs >>= fun (r1, r2, r3) ->
     "Result of parsing:\n\n" ^ Parse.print r1 ^ "\n\n\n" ^
     "Result of compiling:\n\n" ^ Compile.print r2 ^ "\n\n\n" ^
     "Result of renaming:\n\n" ^ print r3

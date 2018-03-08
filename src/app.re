@@ -107,7 +107,8 @@ type state = {
   selected: option(int),
   clocks: string,
   vars: string,
-  formula: string
+  formula: string,
+  reply: option(string)
 };
 
 let init_node = v => {invariant: "", node: v};
@@ -227,6 +228,8 @@ let update_edge = (edges, edge) =>
   List.map(e => e.edge === edge.edge ? edge : e, edges);
 
 type action =
+  | StartQuery
+  | ReceiveReply(string)
   | ChangeAutomaton(int, string)
   | DeleteAutomaton(int)
   | UpdateClocks(string)
@@ -409,6 +412,25 @@ let renderInitial = (~reduce, ~state: single_state) =>
   | _ => ReasonReact.nullElement
   };
 
+let test_query = "1 1 [0, 0] 10000 [[[GE (1, 0)], [], [], []]] [[[(8, Sil 0, 10, 1)], [(11, Sil 0, 13, 3)], [], []]] [SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (HALT')), SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (HALT'))] (EX Loc' (0, 3)) [] [[0, 2, 4, 6]] [] 1";
+
+let send_query = (~onSend, ~onReceive, ~query, ()) => {
+  onSend();
+  Js.Promise.(
+    Fetch.fetchWithInit(
+      "http://localhost:8000/test",
+      Fetch.RequestInit.make(
+        ~method_=Post,
+        ~body=Fetch.BodyInit.make(query),
+        ()
+      )
+    )
+    |> then_(Fetch.Response.text)
+    |> then_(text => onReceive(text) |> resolve)
+  )
+  |> ignore;
+};
+
 let empty_automaton = {nodes: [], edges: [], selected: Nothing, initial: (-1)};
 
 let make = (~message, _children) => {
@@ -431,7 +453,8 @@ let make = (~message, _children) => {
     selected: Some(0),
     clocks: "",
     vars: "",
-    formula: ""
+    formula: "",
+    reply: None
   },
   reducer: (action: action, {selected, automata} as state: state) => {
     let mk_upd = f =>
@@ -441,7 +464,8 @@ let make = (~message, _children) => {
         ReasonReact.Update({
           ...state,
           automata:
-            assoc_upd_with(((label, x)) => (label, f(x)), key, automata)
+            assoc_upd_with(((label, x)) => (label, f(x)), key, automata),
+          reply: None
         })
       };
     let update_node = upd =>
@@ -463,6 +487,8 @@ let make = (~message, _children) => {
         };
       });
     switch action {
+    | StartQuery => ReasonReact.Update({...state, reply: None})
+    | ReceiveReply(s) => ReasonReact.Update({...state, reply: Some(s)})
     | ChangeAutomaton(key, value) =>
       selected == Some(key) ?
         ReasonReact.Update({
@@ -473,26 +499,30 @@ let make = (~message, _children) => {
           ReasonReact.Update({
             ...state,
             selected: Some(key),
-            automata: assoc_upd_with(((_k, x)) => (value, x), key, automata)
+            automata: assoc_upd_with(((_k, x)) => (value, x), key, automata),
+            reply: None
           }) :
           ReasonReact.Update({
             ...state,
             selected: Some(key),
-            automata: [(key, (value, empty_automaton)), ...automata]
+            automata: [(key, (value, empty_automaton)), ...automata],
+            reply: None
           })
     | DeleteAutomaton(key) =>
       ReasonReact.Update({
         ...state,
         selected: None,
-        automata: List.remove_assoc(key, automata)
+        automata: List.remove_assoc(key, automata),
+        reply: None
       })
-    | UpdateClocks(s) => ReasonReact.Update({...state, clocks: s})
-    | UpdateVars(s) => ReasonReact.Update({...state, vars: s})
+    | UpdateClocks(s) => ReasonReact.Update({...state, clocks: s, reply: None})
+    | UpdateVars(s) => ReasonReact.Update({...state, vars: s, reply: None})
     | SetInitial =>
       mk_upd(automaton =>
         {...automaton, initial: selected_node(automaton.selected).node##id}
       )
-    | UpdateFormula(s) => ReasonReact.Update({...state, formula: s})
+    | UpdateFormula(s) =>
+      ReasonReact.Update({...state, formula: s, reply: None})
     | UnsetInitial => mk_upd(automaton => {...automaton, initial: (-1)})
     | UpdateNodeInvariant(s) => update_node(node => {...node, invariant: s})
     | UpdateNodeLabel(s) =>
@@ -553,6 +583,7 @@ let make = (~message, _children) => {
       | None => ReasonReact.nullElement
       | Some(key) => List.assoc(key, state.automata) |> snd |> f
       };
+    let compiled = state_out(state) |> Rename.parse_compile;
     <div className="container">
       /* <div className="App-header">
            <img src=logo className="App-logo" alt="logo" />
@@ -637,10 +668,39 @@ let make = (~message, _children) => {
             )
             onDelete=(reduce(x => DeleteAutomaton(x)))
           />
-          <input _type="button" className=button_class value="Compile!" />
         </div>
+        (
+          switch compiled {
+          | Error.Error(_) => ReasonReact.nullElement
+          | Error.Result((_, _, r)) =>
+            <div>
+              <input
+                _type="button"
+                className=button_class
+                value="Verify!"
+                onClick=(
+                  _evt =>
+                    send_query(
+                      ~onSend=reduce(() => StartQuery),
+                      ~onReceive=reduce(s => ReceiveReply(s)),
+                      ~query=Print_munta.print(r),
+                      ()
+                    )
+                )
+              />
+              (
+                switch state.reply {
+                | None => ReasonReact.nullElement
+                | Some(s) => <pre> (str(s)) </pre>
+                }
+              )
+            </div>
+          }
+        )
         <div>
-          <pre> (str(state_out(state) |> Print_munta.rename_and_print)) </pre>
+          <pre>
+            (state_out(state) |> Print_munta.rename_and_print |> str)
+          </pre>
         </div>
       </div>;
     /* <Test />; */
