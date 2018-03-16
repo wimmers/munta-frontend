@@ -127,13 +127,13 @@ let compile_bexp clocks vars =
     let rec compile = function
         | True -> [SETF true] |> map_instr |> return
         | Not e -> compile e >>= fun xs ->
-            xs @ map_instr [NOT] |> return
+            xs @ map_instr [COPY; NOT] |> return
         | And (a, b) ->
             compile a <|> compile b >>= fun (xs, ys) ->
             xs @ map_instr [COPY] @ ys @ map_instr [AND] |> return
         | Or (a, b) ->
             compile a <|> compile b >>= fun (xs, ys) ->
-            xs @ map_instr [NOT; COPY] @ ys @ map_instr [NOT; AND; NOT] |> return
+            xs @ map_instr [COPY; NOT; COPY] @ ys @ map_instr [COPY; NOT; AND; COPY; NOT] |> return
         | Lt (a, b) as x ->
             if is_var a then [PUSH b; LID a; LT] |> map_instr |> return
             else if is_clock a then x |> return_cexp
@@ -147,11 +147,11 @@ let compile_bexp clocks vars =
             else if is_clock a then x |> return_cexp
             else unknown_variable a
         | Ge (a, b) as x ->
-            if is_var a then [PUSH b; LID a; LT; NOT] |> map_instr |> return
+            if is_var a then [PUSH b; LID a; LT; COPY; NOT] |> map_instr |> return
             else if is_clock a then x |> return_cexp
             else unknown_variable a
         | Gt (a, b) as x ->
-            if is_var a then [PUSH b; LID a; LE; NOT] |> map_instr |> return
+            if is_var a then [PUSH b; LID a; LE; COPY; NOT] |> map_instr |> return
             else if is_clock a then x |> return_cexp
             else unknown_variable a
         | Imply _ -> Error ["Implication is not supported here"]
