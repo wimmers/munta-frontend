@@ -2,25 +2,10 @@ open Test2;;
 open Error;;
 open Compile;;
 open Rename;;
+open Util2;;
 
-let groupBy key xs =
-    let rec group = function
-        | ([], [])  -> []
-        | ([], grp) -> [grp]
-        | (x :: xs, []) -> group (xs, [x])
-        | (x :: xs, (y :: ys as zs)) when key x = key y -> group (xs, x :: zs)
-        | (x :: xs, (y :: ys as zs)) -> zs :: group (xs, [x])
-    in
-    xs |> List.sort (fun a b -> key a - key b) |> fun xs -> group (xs, [])
-
-let rec fill_groups key = function
-    | ([], _) -> []
-    | (_ :: xs, []) -> [] :: fill_groups key (xs, [])
-    | (x :: xs, (y :: ys) :: zs) when key y = x -> (y :: ys) :: fill_groups key (xs, zs)
-    | (x :: xs, (y :: ys) :: zs) -> [] :: fill_groups key (xs, (y :: ys) :: zs)
-
-let upto l u =
-    let rec upt l u = if l >= u then [] else u - 1 :: upt l (u - 1) in upt l u |> List.rev
+let string_of_int i = if i >= 0 then string_of_int i
+    else "~" ^ string_of_int (abs i)
 
 let print_list print_elem xs = "[" ^ Test2.print_list print_elem xs ^ "]"
 let print_pair str1 str2 (a, b) = "(" ^ str1 a ^ ", " ^ str2 b ^ ")"
@@ -70,7 +55,7 @@ let print_formula str =
   | EX f -> "EX " ^ print f
   | EG f -> "EG " ^ print f
   | AX f -> "AX " ^ print f
-  | AG f -> "AG"  ^ print f
+  | AG f -> "AG " ^ print f
   | Leadsto (f, g) -> print f ^ " ---> " ^ print g
 
 let print_invariant ({nodes}) =
@@ -126,8 +111,6 @@ let print_instrc str = function
 let print_prog = print_instrc string_of_int |> print_list
 
 let print_bounds = print_pair string_of_int string_of_int |> print_list
-
-let rec repeat x n = if n <= 0 then [] else x :: repeat x (n - 1)
 
 let print ({automata; prog; vars; num_processes; num_clocks; num_actions; ceiling; formula}) =
     String.concat " " [
