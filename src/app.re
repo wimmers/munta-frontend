@@ -140,6 +140,15 @@ let node_out: node => Parse.node_in =
     label: node.node##title
   };
 
+let merge_node =
+  (node, {id, label, invariant}: Parse.node_in) =>
+  node.node##id == id ?
+  {
+    ...node,
+    invariant
+    /* XXX Update label */
+  } : node;
+
 let edge_out: edge => Parse.edge_in =
   edge => {
     source: edge.edge##source,
@@ -149,11 +158,31 @@ let edge_out: edge => Parse.edge_in =
     update: edge.update
   };
 
+let merge_edge =
+  (edge, {source, target, guard, label, update}: Parse.edge_in) =>
+  source == edge.edge##source && target == edge.edge##target ?
+  {
+    ...edge,
+    guard,
+    label,
+    update
+  } : edge;
+
 let automaton_out: (string, single_state) => Parse.automaton_in =
   (label, {selected, nodes, edges, initial}) => {
     nodes: List.map(node_out, nodes),
     edges: List.map(edge_out, edges),
     initial
+  };
+
+/* XXX Spit error if initial doesn't match */
+let merge_automaton =
+  (automaton: single_state, {nodes, edges, initial}: Parse.automaton_in) =>
+  {
+    nodes: List.map(x => List.fold_left(merge_node, x, nodes), automaton.nodes),
+    edges: List.map(x => List.fold_left(merge_edge, x, edges), automaton.edges),
+    initial,
+    selected: automaton.selected
   };
 
 let state_out =
@@ -165,6 +194,18 @@ let state_out =
   vars,
   formula
 };
+
+/* Check that automata lists are of equal length */
+let merge_state =
+  (state, {automata, clocks, vars, formula}: Parse.network_in) =>
+    {
+    ...state,
+    automata:
+    List.map (((i, (s, x))) => (i, (s, merge_automaton(x, List.assoc(s, automata)))), state.automata),
+    clocks,
+    vars,
+    formula
+  };
 
 let onSelectNode = (v: node) => Js.log(v);
 
@@ -228,6 +269,7 @@ let update_edge = (edges, edge) =>
   List.map(e => e.edge === edge.edge ? edge : e, edges);
 
 type action =
+  | UpdateState(Parse.network_in)
   | StartQuery
   | ReceiveReply(string)
   | ChangeAutomaton(int, string)
@@ -412,8 +454,6 @@ let renderInitial = (~reduce, ~state: single_state) =>
   | _ => ReasonReact.nullElement
   };
 
-let test_query = "1 1 [0, 0] 10000 [[[GE (1, 0)], [], [], []]] [[[(8, Sil 0, 10, 1)], [(11, Sil 0, 13, 3)], [], []]] [SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (HALT')), SOME (INSTR' (SETF' true)), SOME (INSTR' (HALT')), SOME (INSTR' (HALT'))] (EX Loc' (0, 3)) [] [[0, 2, 4, 6]] [] 1";
-
 let send_query = (~onSend, ~onReceive, ~query, ()) => {
   onSend();
   Js.Promise.(
@@ -487,6 +527,7 @@ let make = (~message, _children) => {
         };
       });
     switch action {
+    | UpdateState(s) => ReasonReact.Update(merge_state(state, s))
     | StartQuery => ReasonReact.Update({...state, reply: None})
     | ReceiveReply(s) => ReasonReact.Update({...state, reply: Some(s)})
     | ChangeAutomaton(key, value) =>
@@ -677,6 +718,38 @@ let make = (~message, _children) => {
               <input
                 _type="button"
                 className=button_class
+                value="Check input!"
+                /* onClick=(
+                     _evt => {
+                       let s = state_out(state);
+                       Js.log(Parse.compile(s));
+                       Js.log(
+                         Parse.show_network(Parse.compile(s) |> Error.the_result)
+                       );
+                       Js.log(Parse.parse_print_check(state_out(state)));
+                     }
+                   ) */
+                onClick=(
+                  reduce(_evt =>{
+                    let s = state_out(state);
+                    Js.log(Parse.compile(s));
+                    Js.log(
+                      Parse.show_network(Parse.compile(s) |> Error.the_result)
+                    );
+                    Js.log(Parse.parse_print_check(state_out(state)));
+                    UpdateState(
+                      state
+                      |> state_out
+                      |> Parse.compile
+                      |> Error.the_result
+                      |> Parse.show_network
+                    )}
+                  )
+                )
+              />
+              <input
+                _type="button"
+                className=button_class
                 value="Verify!"
                 onClick=(
                   _evt =>
@@ -686,6 +759,22 @@ let make = (~message, _children) => {
                       ~query=Print_munta.print(r),
                       ()
                     )
+                )
+              />
+              (
+                switch state.reply {
+                | None => ReasonReact.nullElement
+                | Some(s) => <pre> (str(s)) </pre>
+                }
+              )
+              <input
+                _type="button"
+                className=button_class
+                value="Verify in your browser!"
+                onClick=(
+                  reduce(_evt =>
+                    ReceiveReply(Checker.convert_run_print(r, ()))
+                  )
                 )
               />
               (

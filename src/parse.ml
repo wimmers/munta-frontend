@@ -114,3 +114,31 @@ let print ({automata; clocks; vars; formula}) =
 let compile_and_print xs = match compile xs with
     | Result r -> "Success!\n\n" ^ print r
     | Error es -> "Errors encountered during parsing!\n\n" ^  print_items (fun x -> x) es
+
+let show_edge ({source; target; guard; label; update}) =
+({
+    source;
+    target;
+    guard = print_bexp_or_true (fun x -> x)  guard;
+    label = print_action (fun x -> x) label;
+    update = print_list print_update update;
+}: edge_in)
+
+let show_node ({id; label; invariant}) =
+    ({id; label; invariant = print_bexp_or_true (fun x -> x) invariant}: node_in)
+
+let show_automaton ({nodes; edges; initial}) =
+    ({nodes = List.map show_node nodes; edges = List.map show_edge edges; initial}: automaton_in)
+
+let show_network ({automata; clocks; vars; formula}) =
+({
+    automata = List.map (fun (s, x) -> (s, show_automaton x)) automata;
+    clocks = print_list (fun x -> x) clocks;
+    formula = print_formula (fun x -> x) formula;
+    vars = print_list print_var vars;
+}: network_in)
+
+let parse_print_check x =
+    match (compile x >>= fun x -> compile (show_network x) >>= fun y -> return (x = y)) with
+    | Result r -> if r then "Print & parse successful" else "Print & parse failed"
+    | Error es -> "Error during print & parse"

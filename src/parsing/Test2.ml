@@ -41,6 +41,8 @@ let rec print_bexp str = function
   | Gt (x, c) -> print_infix ">" (str x) (string_of_int c)
   | Loc (s, x) -> str s ^ "." ^ str x
 
+let print_bexp_or_true str e = if e == True then "" else print_bexp str e
+
 let print_formula str =
   let print = print_bexp str in
   function
