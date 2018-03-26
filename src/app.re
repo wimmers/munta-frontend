@@ -729,23 +729,18 @@ let make = (~message, _children) => {
                        Js.log(Parse.parse_print_check(state_out(state)));
                      }
                    ) */
-                onClick=(
-                  reduce(_evt =>{
-                    let s = state_out(state);
-                    Js.log(Parse.compile(s));
-                    Js.log(
-                      Parse.show_network(Parse.compile(s) |> Error.the_result)
-                    );
-                    Js.log(Parse.parse_print_check(state_out(state)));
+                onClick=(_evt => {
+                  reduce(_evt =>
                     UpdateState(
                       state
                       |> state_out
                       |> Parse.compile
                       |> Error.the_result
                       |> Parse.show_network
-                    )}
-                  )
-                )
+                    )
+                  ) ();
+                  reduce(_evt => Deselect) ();
+                })
               />
               <input
                 _type="button"
