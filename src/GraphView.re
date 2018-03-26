@@ -36,12 +36,6 @@ type selected =
 let toJs: graph_state => js_graph_state =
   x => {"nodes": Array.of_list(x.nodes), "edges": Array.of_list(x.edges)};
 
-let comp = (f, g, x) => f(g(x));
-
-let comp2 = (f, g, x, y) => f(g(x, y));
-
-let comp3 = (f, g, x, y, z) => f(g(x, y, z));
-
 let emptyType = "empty";
 
 let nodeKey = "id";
@@ -54,36 +48,6 @@ let emptyEdgeType = "emptyEdge";
 
 let specialEdgeType = "specialEdge";
 
-/* let nodes = [
-     {
-       id: 1,
-       title: "Node A",
-       x: 258.3976135253906,
-       y: 331.9783248901367,
-       type_: specialType
-     },
-     {
-       id: 2,
-       title: "Node B",
-       x: 593.9393920898438,
-       y: 260.6060791015625,
-       type_: emptyType
-     },
-     {
-       id: 3,
-       title: "Node C",
-       x: 237.5757598876953,
-       y: 61.81818389892578,
-       type_: emptyType
-     },
-     {
-       id: 4,
-       title: "Node C",
-       x: 600.5757598876953,
-       y: 600.81818389892578,
-       type_: emptyType
-     }
-   ]; */
 let make =
     (
       ~onSelectNode: node => unit,
@@ -124,14 +88,8 @@ let make =
       "edges": Array.of_list(edges),
       "selectedEdge": selectedEdge,
       "selectedNode": selectedNode,
-      "graphControls": graphControls,
-      "enableFocus": enableFocus
-      /* "selected":
-         switch selected {
-         | Nothing => Js.Nullable.null
-         | Node(v) => Js.Nullable.return(v)
-         | Edge(e) => Js.Nullable.return(e)
-         } */
+      "graphControls": graphControls |> Util.to_js_bool,
+      "enableFocus": enableFocus |> Util.to_js_bool,
     },
     children
   );
