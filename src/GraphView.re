@@ -1,32 +1,32 @@
 [@bs.module "./graph.js"]
 external graphView : ReasonReact.reactClass = "default";
 
-type edge = {
+type edge = Js.t({
   .
-  "source": int,
-  "target": int,
-  "type": string
-};
+  source: int,
+  target: int,
+  _type: string
+});
 
-type node = {
+type node = Js.t({
   .
-  "id": int,
-  "title": string,
-  "x": float,
-  "y": float,
-  "type": string
-};
+  id: int,
+  title: string,
+  x: float,
+  y: float,
+  _type: string
+});
 
 type graph_state = {
   nodes: list(node),
   edges: list(edge)
 };
 
-type js_graph_state = {
+type js_graph_state = Js.t({
   .
-  "nodes": array(node),
-  "edges": array(edge)
-};
+  nodes: array(node),
+  edges: array(edge)
+});
 
 type selected =
   | Nothing

@@ -6,7 +6,10 @@
 
 [@bs.module] external logo : string = "./logo.svg";
 
+[@bs.module] external fileDownload : string => string => unit = "js-file-download";
+
 open Util;
+open App_Data;
 
 let globalId = ref(1);
 
@@ -29,7 +32,7 @@ let nodeA = {
   "title": "A",
   "x": 258.3976135253906,
   "y": 331.9783248901367,
-  "type": GraphView.specialType
+  "_type": GraphView.specialType
 };
 
 let nodeB = {
@@ -37,7 +40,7 @@ let nodeB = {
   "title": "B",
   "x": 593.9393920898438,
   "y": 260.6060791015625,
-  "type": GraphView.emptyType
+  "_type": GraphView.emptyType
 };
 
 let nodeC = {
@@ -45,7 +48,7 @@ let nodeC = {
   "title": "C",
   "x": 237.5757598876953,
   "y": 61.81818389892578,
-  "type": GraphView.emptyType
+  "_type": GraphView.emptyType
 };
 
 let nodeD = {
@@ -53,7 +56,7 @@ let nodeD = {
   "title": "D",
   "x": 600.5757598876953,
   "y": 600.81818389892578,
-  "type": GraphView.emptyType
+  "_type": GraphView.emptyType
 };
 
 let nextTestNode = () => {
@@ -71,45 +74,11 @@ let nextTestNode = () => {
 let nodes = [nodeA, nodeB, nodeC, nodeD];
 
 let edges = [
-  {"source": 1, "target": 2, "type": GraphView.specialEdgeType},
-  {"source": 2, "target": 4, "type": GraphView.emptyEdgeType}
+  {"source": 1, "target": 2, "_type": GraphView.specialEdgeType},
+  {"source": 2, "target": 4, "_type": GraphView.emptyEdgeType}
 ];
 
 let init_state: GraphView.graph_state = {nodes, edges};
-
-type node = {
-  invariant: string,
-  node: GraphView.node
-};
-
-type edge = {
-  guard: string,
-  update: string,
-  label: string,
-  edge: GraphView.edge
-};
-
-type selected =
-  | Nothing
-  | Node(node)
-  | Edge(edge);
-
-type single_state = {
-  /* graph: state, */
-  selected,
-  initial: int,
-  nodes: list(node),
-  edges: list(edge)
-};
-
-type state = {
-  automata: list((int, (string, single_state))),
-  selected: option(int),
-  clocks: string,
-  vars: string,
-  formula: string,
-  reply: option(string)
-};
 
 let init_node = v => {invariant: "", node: v};
 
@@ -217,7 +186,7 @@ let onCreateNode = (graph: single_state, x: float, y: float) => {
     "title": "Node N",
     "x": x,
     "y": y,
-    "type": GraphView.emptyType
+    "_type": GraphView.emptyType
   };
   let nodes = [init_node(node), ...graph.nodes];
   {...graph, nodes};
@@ -231,7 +200,7 @@ let onCreateEdge:
     let edge: GraphView.edge = {
       "source": v##id,
       "target": w##id,
-      "type": GraphView.emptyEdgeType
+      "_type": GraphView.emptyEdgeType
     };
     let edges = [init_edge(edge), ...graph.edges];
     {...graph, edges};
@@ -249,7 +218,7 @@ let onSwapEdge:
     let edge: GraphView.edge = {
       "source": v##id,
       "target": w##id,
-      "type": GraphView.emptyEdgeType
+      "_type": GraphView.emptyEdgeType
       /* TODO: Problem with ##type accessor */
     };
     let e = List.find(x => x.edge === e, graph.edges);
@@ -269,6 +238,7 @@ let update_edge = (edges, edge) =>
   List.map(e => e.edge === edge.edge ? edge : e, edges);
 
 type action =
+  | LoadState(state)
   | UpdateState(Parse.network_in)
   | StartQuery
   | ReceiveReply(string)
@@ -471,6 +441,13 @@ let send_query = (~onSend, ~onReceive, ~query, ()) => {
   |> ignore;
 };
 
+let load_file = (~reduce, file) => switch (Deserialize.decode(file)) {
+| None => Js.log("Error while reading file") /* TODO: better error indication */
+| Some(state) => reduce(() => LoadState(state))()
+};
+
+let default_filename = "automata.muntax";
+
 let empty_automaton = {nodes: [], edges: [], selected: Nothing, initial: (-1)};
 
 let make = (~message, _children) => {
@@ -527,6 +504,7 @@ let make = (~message, _children) => {
         };
       });
     switch action {
+    | LoadState(s) => ReasonReact.Update(s)
     | UpdateState(s) => ReasonReact.Update(merge_state(state, s))
     | StartQuery => ReasonReact.Update({...state, reply: None})
     | ReceiveReply(s) => ReasonReact.Update({...state, reply: Some(s)})
@@ -570,14 +548,13 @@ let make = (~message, _children) => {
       update_node(node =>
         {
           ...node,
-          node: {
-            "id": node.node##id,
-            "title": s,
-            "x": node.node##x,
-            "y": node.node##y,
-            /* TODO: type is not a valid selector */
-            "type": GraphView.emptyType
-          }
+          node: [%bs.obj {
+            id: node.node##id,
+            title: s,
+            x: node.node##x,
+            y: node.node##y,
+            _type: GraphView.emptyType
+          }]
         }
       )
     | UpdateEdgeGuard(s) => update_edge(edge => {...edge, guard: s})
@@ -715,20 +692,18 @@ let make = (~message, _children) => {
           | Error.Error(_) => ReasonReact.nullElement
           | Error.Result((_, _, r)) =>
             <div>
+            <input
+            _type="button"
+            className=button_class
+            value="Save!"
+            onClick=(
+              _evt => state |> Serialize.state |> Json.stringify |> s => fileDownload(s, default_filename)
+            )
+          />
               <input
                 _type="button"
                 className=button_class
                 value="Check input!"
-                /* onClick=(
-                     _evt => {
-                       let s = state_out(state);
-                       Js.log(Parse.compile(s));
-                       Js.log(
-                         Parse.show_network(Parse.compile(s) |> Error.the_result)
-                       );
-                       Js.log(Parse.parse_print_check(state_out(state)));
-                     }
-                   ) */
                 onClick=(_evt => {
                   reduce(_evt =>
                     UpdateState(
@@ -785,6 +760,11 @@ let make = (~message, _children) => {
           <pre>
             (state_out(state) |> Print_munta.rename_and_print |> str)
           </pre>
+        </div>
+        <div className="dropzone">
+          <Dropzone onDrop=load_file(~reduce) accept=".muntax">
+            <p>(str("Drop a file here, or click to select a file to upload."))</p>
+          </Dropzone>
         </div>
       </div>;
     /* <Test />; */
