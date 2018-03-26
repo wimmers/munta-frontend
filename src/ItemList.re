@@ -23,52 +23,23 @@ module Item = {
     };
   };
 
-type action =
-  | UpdateItem(int, string)
-  | DeleteItem(int)
-  | ChangeFocus(int)
-  | AddItem;
+let component = ReasonReact.statelessComponent("ItemList");
 
-let component = ReasonReact.reducerComponent("ItemList");
-
-let make = (~onChangeFocus, ~onDelete, _children) => {
+let make = (~onAdd, ~onChangeFocus, ~onDelete, ~onUpdate, ~items, _children) => {
     ...component,
-    initialState: () => [(0, "New Automaton")],
-    reducer: (action: action, state: state) => {
-        switch action {
-        | UpdateItem(key, value) => {
-            let item = (key, value);
-            onChangeFocus(item);
-            ReasonReact.Update(assoc_upd(key, value, state))
-        }
-        | DeleteItem(key) => {
-            onDelete(key);
-            ReasonReact.Update(List.remove_assoc(key, state))
-        }
-        | AddItem => {
-            let new_item = (List.length(state), "New Automaton");
-            onChangeFocus(new_item);
-            ReasonReact.Update(List.append(state, [new_item]))
-        }
-        | ChangeFocus(key) => {
-            onChangeFocus((key, List.assoc(key, state)));
-            ReasonReact.NoUpdate
-        }
-        };
-    },
     render: ({reduce, state, handle}) => {
         <div>
         (
             List.map(item => <Item
                 key=(string_of_int(fst(item)))
                 item
-                onClick=(reduce(key => ChangeFocus(key)))
-                onChange=(reduce(((x,y)) => UpdateItem(x,y)))
-            />, state)
+                onClick=(key => onChangeFocus(key))
+                onChange=(v => onUpdate(v))
+            />, items)
             |> Array.of_list
             |> ReasonReact.arrayToElement
         )
-        <div onClick=(reduce(_evt => AddItem))>(str("+"))</div>
+        <div onClick=(_evt => onAdd())>(str("+"))</div>
         </div>
     }
 };

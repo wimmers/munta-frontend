@@ -447,6 +447,7 @@ let load_file = (~reduce, file) => switch (Deserialize.decode(file)) {
 };
 
 let default_filename = "automata.muntax";
+let new_automaton_name = "New Automaton";
 
 let empty_automaton = {nodes: [], edges: [], selected: Nothing, initial: (-1)};
 
@@ -678,13 +679,11 @@ let make = (~message, _children) => {
             />
           </div>
           <ItemList
-            onChangeFocus=(
-              reduce(x => {
-                let (k, v) = x;
-                ChangeAutomaton(k, v);
-              })
-            )
+            onAdd=(reduce(() => ChangeAutomaton(List.length(state.automata), new_automaton_name)))
+            onChangeFocus=(reduce(k => ChangeAutomaton(k, List.assoc(k, state.automata) |> fst)))
             onDelete=(reduce(x => DeleteAutomaton(x)))
+            onUpdate=(reduce(((k, v)) => ChangeAutomaton(k, v)))
+            items=(List.map(((key, (label, _v))) => (key, label), state.automata) |> List.rev)
           />
         </div>
         (
