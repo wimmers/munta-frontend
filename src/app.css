@@ -33,6 +33,39 @@
   max-width: 200px;
 }
 
+.text-box {
+  background-color: rgba(80, 47, 78, 0.137);
+  color: rgb(104, 72, 105);
+  max-width: 10em;
+}
+
+.text-box-outer {
+  margin-right: -2em;
+}
+
+.text-box-highlight {
+  background-color: rgba(160, 141, 159, 0.5);
+  color: rgb(41, 37, 41);
+}
+
+.small-button {
+  max-width: 1em;
+  background-color: rgba(80, 47, 78, 0.137);
+}
+
+.mr-2{
+  margin-right: 10px;
+}
+
+.output{
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.btn.disabled.btn-cursor{
+  cursor: pointer
+}
+
 @keyframes App-logo-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

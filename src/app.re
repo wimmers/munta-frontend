@@ -84,98 +84,6 @@ let init_node = v => {invariant: "", node: v};
 
 let init_edge = e => {guard: "", update: "", label: "", edge: e};
 
-let selected_to_view: selected => GraphView.selected =
-  s =>
-    switch s {
-    | Nothing => GraphView.Nothing
-    | Node(v) => GraphView.Node(v.node)
-    | Edge(e) => GraphView.Edge(e.edge)
-    };
-
-let selected_node = s =>
-  switch s {
-  | Node(v) => v
-  };
-
-let selected_edge = s =>
-  switch s {
-  | Edge(e) => e
-  };
-
-let node_out: node => Parse.node_in =
-  node => {
-    id: node.node##id,
-    invariant: node.invariant,
-    label: node.node##title
-  };
-
-let merge_node =
-  (node, {id, label, invariant}: Parse.node_in) =>
-  node.node##id == id ?
-  {
-    ...node,
-    invariant
-    /* XXX Update label */
-  } : node;
-
-let edge_out: edge => Parse.edge_in =
-  edge => {
-    source: edge.edge##source,
-    target: edge.edge##target,
-    guard: edge.guard,
-    label: edge.label,
-    update: edge.update
-  };
-
-let merge_edge =
-  (edge, {source, target, guard, label, update}: Parse.edge_in) =>
-  source == edge.edge##source && target == edge.edge##target ?
-  {
-    ...edge,
-    guard,
-    label,
-    update
-  } : edge;
-
-let automaton_out: (string, single_state) => Parse.automaton_in =
-  (label, {selected, nodes, edges, initial}) => {
-    nodes: List.map(node_out, nodes),
-    edges: List.map(edge_out, edges),
-    initial
-  };
-
-/* XXX Spit error if initial doesn't match */
-let merge_automaton =
-  (automaton: single_state, {nodes, edges, initial}: Parse.automaton_in) =>
-  {
-    nodes: List.map(x => List.fold_left(merge_node, x, nodes), automaton.nodes),
-    edges: List.map(x => List.fold_left(merge_edge, x, edges), automaton.edges),
-    initial,
-    selected: automaton.selected
-  };
-
-let state_out =
-    ({selected, automata, clocks, vars, formula})
-    : Parse.network_in => {
-  automata:
-    List.map(((_, (label, x))) => (label, automaton_out(label, x)), automata),
-  clocks,
-  vars,
-  formula
-};
-
-/* Check that automata lists are of equal length */
-let merge_state =
-  (state, {automata, clocks, vars, formula}: Parse.network_in) =>
-    {
-    ...state,
-    automata:
-    List.map (((i, (s, x))) => (i, (s, merge_automaton(x, List.assoc(s, automata)))), state.automata),
-    clocks,
-    vars,
-    formula
-  };
-
 let onSelectNode = (v: node) => Js.log(v);
 
 let onDeselectNode = () => Js.log("Deslected node");
@@ -271,14 +179,20 @@ module CheckBox = {
   let make = (~onCheck, ~onUncheck, ~desc, ~checked, _children) => {
     ...component,
     render: self =>
-      <div className="item">
+    {
+      let className = "form-control btn btn-large btn-default";
+      let className = className ++ (checked ? " active" : " btn-cursor disabled");
+      <div className="form-group col-md-3">
+        <label htmlFor="checkbox-button"> (str(desc)) </label>
         <input
-          _type="checkbox"
-          checked=(to_js_bool(checked))
-          onChange=(_evt => checked ? onUncheck() : onCheck())
+          _type="button"
+          id="checkbox-button"
+          className
+          value=(checked ? "yes" : "no")
+          onClick=(_evt => checked ? onUncheck() : onCheck())
         />
-        (str(desc))
       </div>
+    }
   };
 };
 
@@ -288,7 +202,7 @@ module FormulaBox = {
     ...component,
     render: _self =>
       <div className="form-group col-md-3">
-        <label htmlFor="text-box"> (str(desc)) </label>
+        <label htmlFor="text-input"> (str(desc)) </label>
         <input
           _type="text"
           id="text-input"
@@ -312,8 +226,8 @@ module Declaration = {
         <textarea
           id="text-box"
           className="form-control"
-          rows=7
-          cols=20
+          rows=3
+          cols=15
           placeholder
           onChange=(evt => onChange(valueFromEvent(evt)))
           value
@@ -322,35 +236,6 @@ module Declaration = {
   };
 };
 
-/* module Declaration = {
-     type state = string;
-     let component = ReasonReact.reducerComponent("Declaration");
-     let make = (~desc, ~placeholder, ~onChange, ~value, _children) => {
-       ...component,
-       initialState: () => {
-         Js.log(desc ++ " Init with " ++ value);
-         value;
-       },
-       reducer: (newText, _text) =>
-         /* onChange(newText); */
-         ReasonReact.Update(newText),
-       render: ({state: text, reduce}) =>
-         <div>
-           (str(desc))
-           <textarea
-             placeholder
-             onChange=(reduce(evt => valueFromEvent(evt)))
-             onBlur=(
-               _evt => {
-                 Js.log(desc ++ " Blur with " ++ text);
-                 onChange(text);
-               }
-             )
-             value=text
-           />
-         </div>
-     };
-   }; */
 let key_of_node = v => string_of_int(v.node##id);
 
 let key_of_edge = e =>
@@ -415,7 +300,7 @@ let renderInitial = (~reduce, ~state: single_state) =>
   switch state.selected {
   | Node(v) =>
     <CheckBox
-      desc="Initial"
+      desc="Initial:"
       checked=(v.node##id == state.initial)
       key=("IN" ++ key_of_node(v))
       onCheck=(reduce(_evt => SetInitial))
@@ -451,14 +336,14 @@ let new_automaton_name = "New Automaton";
 
 let empty_automaton = {nodes: [], edges: [], selected: Nothing, initial: (-1)};
 
-let make = (~message, _children) => {
+let make = (_children) => {
   ...component,
   initialState: () => {
     automata: [
-      (
+      /* (
         0,
         (
-          "New Automaton",
+          new_automaton_name,
           {
             nodes: List.map(init_node, nodes),
             edges: List.map(init_edge, edges),
@@ -466,9 +351,9 @@ let make = (~message, _children) => {
             initial: (-1)
           }
         )
-      )
+      ) */
     ],
-    selected: Some(0),
+    selected: None,
     clocks: "",
     vars: "",
     formula: "",
@@ -596,7 +481,6 @@ let make = (~message, _children) => {
     };
   },
   render: ({reduce, state, handle}) => {
-    let button_class = "btn btn-lg btn-default";
     let mk_render = f =>
       switch state.selected {
       | None => ReasonReact.nullElement
@@ -604,15 +488,6 @@ let make = (~message, _children) => {
       };
     let compiled = state_out(state) |> Rename.parse_compile;
     <div className="container">
-      /* <div className="App-header">
-           <img src=logo className="App-logo" alt="logo" />
-           <h2> (ReasonReact.stringToElement(message)) </h2>
-         </div>
-         <p className="App-intro">
-           (ReasonReact.stringToElement("To get started, edit"))
-           <code> (ReasonReact.stringToElement(" src/app.re ")) </code>
-           (ReasonReact.stringToElement("and save to reload!"))
-         </p> */
 
         <div className="page-header">
           <h1 className="text-muted"> (str("Munta")) </h1>
@@ -649,13 +524,13 @@ let make = (~message, _children) => {
           <div className="row">
             <Declaration
               desc="Clocks:"
-              placeholder="Clock Declarations"
+              placeholder="Clock Declarations\nExample: c_1, c_2, c_3"
               value=state.clocks
               onChange=(reduce(evt => UpdateClocks(evt)))
             />
             <Declaration
-              desc="Vars:"
-              placeholder="Declarations of integer variables"
+              desc="Variables:"
+              placeholder="Declarations of integer variables\nExample: x[-10:10], y[0:3]"
               value=state.vars
               onChange=(reduce(evt => UpdateVars(evt)))
             />
@@ -670,39 +545,44 @@ let make = (~message, _children) => {
               </div>
             )
           )
-          <div className="row">
-            <FormulaBox
-              desc="Formula:"
-              placeholder="Formula"
-              value=state.formula
-              onChange=(reduce(evt => UpdateFormula(evt)))
-            />
-          </div>
           <ItemList
             onAdd=(reduce(() => ChangeAutomaton(List.length(state.automata), new_automaton_name)))
             onChangeFocus=(reduce(k => ChangeAutomaton(k, List.assoc(k, state.automata) |> fst)))
             onDelete=(reduce(x => DeleteAutomaton(x)))
             onUpdate=(reduce(((k, v)) => ChangeAutomaton(k, v)))
             items=(List.map(((key, (label, _v))) => (key, label), state.automata) |> List.rev)
+            selected=state.selected
+            desc="Automata:"
           />
+        </div>
+        <div className="row">
+            <FormulaBox
+              desc="Formula:"
+              placeholder="Formula"
+              value=state.formula
+              onChange=(reduce(evt => UpdateFormula(evt)))
+            />
         </div>
         (
           switch compiled {
           | Error.Error(_) => ReasonReact.nullElement
           | Error.Result((_, _, r)) =>
-            <div>
-            <input
-            _type="button"
-            className=button_class
-            value="Save!"
-            onClick=(
-              _evt => state |> Serialize.state |> Json.stringify |> s => fileDownload(s, default_filename)
-            )
-          />
+            <div className="btn-toolbar btn-toolbar-lg" role="toolbar">
+            <div className="btn-group btn-group-lg mr-2" role="group">
               <input
                 _type="button"
-                className=button_class
-                value="Check input!"
+                className="btn btn-primary"
+                value="Save"
+                onClick=(
+                  _evt => state |> Serialize.state |> Json.stringify |> s => fileDownload(s, default_filename)
+                )
+              />
+            </div>
+            <div className="btn-group btn-group-lg mr-2" role="group">
+              <input
+                _type="button"
+                className="btn btn-info"
+                value="Check input"
                 onClick=(_evt => {
                   reduce(_evt =>
                     UpdateState(
@@ -716,10 +596,12 @@ let make = (~message, _children) => {
                   reduce(_evt => Deselect) ();
                 })
               />
+            </div>
+            <div className="btn-group btn-group-lg" role="group">
               <input
                 _type="button"
-                className=button_class
-                value="Verify!"
+                className="btn btn-success"
+                value="Verify"
                 onClick=(
                   _evt =>
                     send_query(
@@ -730,33 +612,37 @@ let make = (~message, _children) => {
                     )
                 )
               />
-              (
-                switch state.reply {
-                | None => ReasonReact.nullElement
-                | Some(s) => <pre> (str(s)) </pre>
-                }
-              )
               <input
                 _type="button"
-                className=button_class
-                value="Verify in your browser!"
+                className="btn btn-success"
+                value="Verify in your browser"
                 onClick=(
                   reduce(_evt =>
                     ReceiveReply(Checker.convert_run_print(r, ()))
                   )
                 )
               />
-              (
-                switch state.reply {
-                | None => ReasonReact.nullElement
-                | Some(s) => <pre> (str(s)) </pre>
-                }
-              )
+            </div>
             </div>
           }
         )
-        <div>
-          <pre>
+        (
+        switch state.reply {
+        | None => ReasonReact.nullElement
+        | Some(s) =>
+          <div className="output">
+            <label htmlFor="verification-output">
+              (str("Verification result:"))
+            </label>
+            <pre id="verification-output"> (str(s)) </pre>
+          </div>
+        }
+        )
+        <div className="output">
+          <label htmlFor="compilation-output">
+            (str("Result of parsing/compilation:"))
+          </label>
+          <pre id="compiliation-output">
             (state_out(state) |> Print_munta.rename_and_print |> str)
           </pre>
         </div>
