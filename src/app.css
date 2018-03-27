@@ -73,6 +73,7 @@
   resize: both;
   overflow: auto;
   margin-bottom: 10px;
+  border: rgba(80, 47, 78, 0.137) solid 2px;
 }
 
 @keyframes App-logo-spin {
