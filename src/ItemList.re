@@ -42,12 +42,18 @@ let make = (~onAdd, ~onChangeFocus, ~onDelete, ~onUpdate, ~items, ~selected, ~de
             |> Array.of_list
             |> ReasonReact.arrayToElement
         )
-            <div className="col-sm-2">
+            <div className="col-sm-2 btn-group btn-group-md" role="group">
                 <input
                     _type="button"
-                    className="btn btn-md btn-default"
-                    value="Add Automaton"
+                    className="btn btn-default"
+                    value="Add"
                     onClick=(_evt => onAdd())
+                />
+                <input
+                    _type="button"
+                    className=("btn btn-default" ++ (selected == None ? " disabled" : ""))
+                    value="Delete"
+                    onClick=(_evt => switch selected { | None => () | Some(key) => onDelete(key)})
                 />
             </div>
         </div>
