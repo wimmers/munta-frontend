@@ -498,6 +498,7 @@ let make = (_children) => {
         <div>
           (
             mk_render(state =>
+              <div className="graph-panel">
               <GraphView
                 onSelectNode=(reduce(v => SelectNode(v)))
                 onDeselectNode=(reduce(() => Deselect))
@@ -519,6 +520,7 @@ let make = (_children) => {
                 graphControls=false
                 enableFocus=true
               />
+              </div>
             )
           )
           <div className="row">

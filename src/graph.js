@@ -38,6 +38,12 @@ const SpecialEdgeShape = (
     </symbol>
 )
 
+const styles = {
+    graph: {
+        "font-size": "x-large",
+    }
+};
+
 const sample = {
     "nodes": [
         {
@@ -86,12 +92,12 @@ const sample = {
 
 let NodeTypes = {
     empty: {
-        typeText: "None",
+        // typeText: "None",
         shapeId: "#empty",
         shape: EmptyShape
     },
     special: {
-        typeText: "Special",
+        // typeText: "Special",
         shapeId: "#special",
         shape: SpecialShape
     }
@@ -112,13 +118,6 @@ let NodeSubtypes = {
     specialChild: {
         shapeId: "#specialChild",
         shape: SpecialChildShape
-    }
-};
-
-const styles = {
-    graph: {
-        height: '100%',
-        width: '90%'
     }
 };
 
@@ -293,30 +292,28 @@ export default class Graph extends React.Component {
         selected = !!selected ? selected : {};
 
         return (
-            <div id='graph' style={styles.graph}>
-
-                <GraphView ref='GraphView'
-                    nodeKey={NODE_KEY}
-                    emptyType={EMPTY_TYPE}
-                    nodes={this.props.nodes}
-                    edges={this.props.edges}
-                    selected={selected}
-                    nodeTypes={NodeTypes}
-                    nodeSubtypes={NodeSubtypes}
-                    edgeTypes={EdgeTypes}
-                    getViewNode={this.getViewNode}
-                    onSelectNode={this.onSelectNode}
-                    onCreateNode={this.props.onCreateNode}
-                    onUpdateNode={this.props.onUpdateNode}
-                    onDeleteNode={this.props.onDeleteNode}
-                    onSelectEdge={this.props.onSelectEdge}
-                    onCreateEdge={this.props.onCreateEdge}
-                    onSwapEdge={this.props.onSwapEdge}
-                    onDeleteEdge={this.props.onDeleteEdge}
-                    graphControls={this.props.graphControls}
-                    enableFocus={this.props.enableFocus}
-                />
-            </div>
+            <GraphView ref='GraphView'
+                nodeKey={NODE_KEY}
+                emptyType={EMPTY_TYPE}
+                nodes={this.props.nodes}
+                edges={this.props.edges}
+                selected={selected}
+                nodeTypes={NodeTypes}
+                nodeSubtypes={NodeSubtypes}
+                edgeTypes={EdgeTypes}
+                getViewNode={this.getViewNode}
+                onSelectNode={this.onSelectNode}
+                onCreateNode={this.props.onCreateNode}
+                onUpdateNode={this.props.onUpdateNode}
+                onDeleteNode={this.props.onDeleteNode}
+                onSelectEdge={this.props.onSelectEdge}
+                onCreateEdge={this.props.onCreateEdge}
+                onSwapEdge={this.props.onSwapEdge}
+                onDeleteEdge={this.props.onDeleteEdge}
+                graphControls={this.props.graphControls}
+                enableFocus={this.props.enableFocus}
+            // style={styles.graph}
+            />
         );
     }
 
