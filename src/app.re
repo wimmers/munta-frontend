@@ -71,6 +71,7 @@ let nextTestNode = () => {
   };
 };
 
+
 let nodes = [nodeA, nodeB, nodeC, nodeD];
 
 let edges = [
@@ -334,6 +335,22 @@ let load_file = (~reduce, file) => switch (Deserialize.decode(file)) {
 let default_filename = "automata.muntax";
 let new_automaton_name = "New Automaton";
 
+let display_node = node => [%bs.obj {
+  id: node##id,
+  title: node##title,
+  x: node##x,
+  y: node##y,
+  _type: GraphView.emptyType
+}];
+
+let display_init_node = node => [%bs.obj {
+  id: node##id,
+  title: node##title,
+  x: node##x,
+  y: node##y,
+  _type: GraphView.specialType
+}];
+
 let empty_automaton = {nodes: [], edges: [], selected: Nothing, initial: (-1)};
 
 let make = (_children) => {
@@ -514,7 +531,9 @@ let make = (_children) => {
                     SwapEdge(v, w, e);
                   })
                 )
-                nodes=(List.map(v => v.node, state.nodes))
+                nodes=(List.map(v => v.node##id == state.initial ?
+                    display_init_node(v.node) : display_node(v.node),
+                  state.nodes))
                 edges=(List.map(e => e.edge, state.edges))
                 selected=(selected_to_view(state.selected))
                 graphControls=false
