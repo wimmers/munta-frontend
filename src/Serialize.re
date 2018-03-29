@@ -1,48 +1,31 @@
-let graph_node = (node: GraphView.node) =>
+let node = (n: App_Data.node) =>
 Json.Encode.({
     let obj = [
-        ("id",      node##id    |> int),
-        ("title",   node##title |> string),
-        ("x",       node##x     |> float),
-        ("y",       node##y     |> float),
-        ("type",    node##_type |> string),
+        ("id",      n.node##id    |> int),
+        ("name",   n.node##title |> string),
+        ("x",       n.node##x     |> float),
+        ("y",       n.node##y     |> float),
+        ("invariant", n.invariant |> string),
     ];
     object_(obj)
 });
 
-let graph_edge = (edge: GraphView.edge) =>
+let edge = (e: App_Data.edge) =>
 Json.Encode.({
     let obj = [
-        ("source",  edge##source    |> int),
-        ("target",  edge##target    |> int),
-        ("type",    edge##_type     |> string),
+        ("source",  e.edge##source    |> int),
+        ("target",  e.edge##target    |> int),
+        ("guard",   e.guard  |> string),
+        ("label",   e.label  |> string),
+        ("update",  e.update |> string),
     ];
     object_(obj)
 });
 
-let node = (node: App_Data.node) =>
+let single_state = ((_, (name: string, state: App_Data.single_state))) =>
 Json.Encode.({
     let obj = [
-        ("invariant", node.invariant |> string),
-        ("node",      node.node      |> graph_node)
-    ];
-    object_(obj)
-});
-
-let edge = (edge: App_Data.edge) =>
-Json.Encode.({
-    let obj = [
-        ("guard",   edge.guard  |> string),
-        ("update",  edge.update |> string),
-        ("label",   edge.label  |> string),
-        ("edge",    edge.edge   |> graph_edge)
-    ];
-    object_(obj)
-});
-
-let single_state = (state: App_Data.single_state) =>
-Json.Encode.({
-    let obj = [
+        ("name",    name            |> string),
         ("initial", state.initial   |> int),
         ("nodes",   state.nodes     |> list(node)),
         ("edges",   state.edges     |> list(edge))
@@ -53,7 +36,7 @@ Json.Encode.({
 let state = (state: App_Data.state) =>
 Json.Encode.({
     let obj = [
-        ("automata",    state.automata  |> list(pair(int, pair(string, single_state)))),
+        ("automata",    state.automata  |> list(single_state)),
         ("clocks",      state.clocks    |> string),
         ("vars",        state.vars      |> string),
         ("formula",     state.formula   |> string),
