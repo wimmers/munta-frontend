@@ -30,10 +30,10 @@ let print_infix sep a b = a ^ " " ^ sep ^ " " ^ b
 
 let rec print_bexp str = function
   | True -> "true"
-  | Not e -> print_bexp str e |> print_parens |> fun s -> "Not " ^ s
+  | Not e -> print_bexp str e |> print_parens |> fun s -> "~ " ^ s
   | And (e1, e2) -> print_infix "&&" (print_bexp str e1 |> print_parens) (print_bexp str e2 |> print_parens)
   | Or (e1, e2) -> print_infix "||" (print_bexp str e1 |> print_parens) (print_bexp str e2 |> print_parens)
-  | Imply (e1, e2) -> print_infix "-->" (print_bexp str e1 |> print_parens) (print_bexp str e2 |> print_parens)
+  | Imply (e1, e2) -> print_infix "->" (print_bexp str e1 |> print_parens) (print_bexp str e2 |> print_parens)
   | Lt (x, c) -> print_infix "<" (str x) (string_of_int c)
   | Le (x, c) -> print_infix "<=" (str x) (string_of_int c)
   | Eq (x, c) -> print_infix "=" (str x) (string_of_int c)
@@ -50,7 +50,7 @@ let print_formula str =
   | EG f -> "E[] " ^ print f
   | AX f -> "A<> " ^ print f
   | AG f -> "A[]"  ^ print f
-  | Leadsto (f, g) -> print f ^ " ---> " ^ print g
+  | Leadsto (f, g) -> print f ^ " --> " ^ print g
 
 let print_action str = function
   | Internal x -> str x

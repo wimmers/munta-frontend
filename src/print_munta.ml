@@ -56,7 +56,7 @@ let print_formula str =
   | EG f -> "EG " ^ print f
   | AX f -> "AX " ^ print f
   | AG f -> "AG " ^ print f
-  | Leadsto (f, g) -> print f ^ " ---> " ^ print g
+  | Leadsto (f, g) -> print f ^ " --> " ^ print g
 
 let print_invariant ({nodes}) =
     nodes |> print_list (fun {invariant} ->
@@ -96,12 +96,12 @@ let print_instr print_a print_b = function
     | PUSH b -> "PUSH' " ^ print_b b
     | POP -> "POP'"
     | LID a -> "LID' " ^ print_a a
-    | STOREI (a, b) -> "STOREI' " ^ print_a a ^ " " ^ print_b b
+    | STOREI (a, b) -> print_pairc "STOREI' " print_a print_b (a, b)
     | COPY -> "COPY'"
     | CALL -> "CALL'"
     | RETURN -> "RETURN'"
     | HALT -> "HALT'"
-    | STOREC (a, b) -> "STOREC' " ^ print_a a ^ " " ^ print_b b
+    | STOREC (a, b) -> print_pairc "STOREC' " print_a print_b (a, b)
     | SETF b -> if b then "SETF' true" else "SETF' false"
 
 let print_instrc str = function
