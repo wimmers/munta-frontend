@@ -152,6 +152,7 @@ type action =
   | StartQuery
   | ReceiveReply(string)
   | ChangeAutomaton(int, string)
+  | CopyAutomaton(int)
   | DeleteAutomaton(int)
   | UpdateClocks(string)
   | UpdateVars(string)
@@ -430,6 +431,18 @@ let make = (_children) => {
             automata: [(key, (value, empty_automaton)), ...automata],
             reply: None
           })
+    | CopyAutomaton(key) =>
+      ReasonReact.Update({
+        let new_key = List.length(automata);
+        let (name, automaton) = List.assoc(key, automata);
+        let names = List.map(((_, (name, _))) => name, automata);
+        let name = Util.make_new_name(names, name);
+        {
+          ...state,
+          automata: [(new_key, (name, automaton)), ...automata],
+          reply: None
+        }
+      })
     | DeleteAutomaton(key) =>
       ReasonReact.Update({
         ...state,
@@ -569,6 +582,7 @@ let make = (_children) => {
           <ItemList
             onAdd=(reduce(() => ChangeAutomaton(List.length(state.automata), new_automaton_name)))
             onChangeFocus=(reduce(k => ChangeAutomaton(k, List.assoc(k, state.automata) |> fst)))
+            onCopy=(reduce(x => CopyAutomaton(x)))
             onDelete=(reduce(x => DeleteAutomaton(x)))
             onUpdate=(reduce(((k, v)) => ChangeAutomaton(k, v)))
             items=(List.map(((key, (label, _v))) => (key, label), state.automata) |> List.rev)

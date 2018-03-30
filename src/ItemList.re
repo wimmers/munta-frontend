@@ -25,9 +25,16 @@ module Item = {
 
 let component = ReasonReact.statelessComponent("ItemList");
 
-let make = (~onAdd, ~onChangeFocus, ~onDelete, ~onUpdate, ~items, ~selected, ~desc, _children) => {
+let make = (
+    ~onAdd, ~onChangeFocus, ~onCopy, ~onDelete, ~onUpdate, ~items, ~selected, ~desc, _children
+) => {
     ...component,
     render: ({reduce, state, handle}) => {
+        let on_selected(f) = (_evt => switch selected {
+        | None => ()
+        | Some(key) => f(key)
+        });
+        let disabled_class = "btn btn-default" ++ (selected == None ? " disabled" : "");
         <div>
         <label htmlFor="item-list"> (str(desc)) </label>
         <div className="form-group row" id="item-list">
@@ -42,7 +49,7 @@ let make = (~onAdd, ~onChangeFocus, ~onDelete, ~onUpdate, ~items, ~selected, ~de
             |> Array.of_list
             |> ReasonReact.arrayToElement
         )
-            <div className="col-sm-2 btn-group btn-group-md" role="group">
+            <div className="col-sm-3 btn-group btn-group-md" role="group">
                 <input
                     _type="button"
                     className="btn btn-default"
@@ -51,9 +58,15 @@ let make = (~onAdd, ~onChangeFocus, ~onDelete, ~onUpdate, ~items, ~selected, ~de
                 />
                 <input
                     _type="button"
-                    className=("btn btn-default" ++ (selected == None ? " disabled" : ""))
+                    className=disabled_class
+                    value="Copy"
+                    onClick=(on_selected(onCopy))
+                />
+                <input
+                    _type="button"
+                    className=disabled_class
                     value="Delete"
-                    onClick=(_evt => switch selected { | None => () | Some(key) => onDelete(key)})
+                    onClick=(on_selected(onDelete))
                 />
             </div>
         </div>

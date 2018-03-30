@@ -24,3 +24,11 @@ let the = x =>
   switch x {
   | Some(x) => x
   };
+
+let make_new_name = (names, name) => {
+  let rec f = i => {
+    let n = name ++ "_" ++ string_of_int(i);
+    List.mem(n, names) ? f(i + 1) : n
+  };
+  f(1);
+};
