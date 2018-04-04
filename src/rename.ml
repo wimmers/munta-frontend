@@ -93,7 +93,9 @@ let rename_automaton f_action (f_clock: string -> int) ({nodes; edges; initial}:
     let f_lab x = List.assoc x labs |> f_loc in
     combine_map (rename_edge f_action f_loc) edges >>= fun edges ->
     ({
-        nodes = List.map (rename_node f_loc (rename_bexp f_clock (fun _ -> -1) (fun _ _ -> -1))) nodes;
+        nodes =
+            List.map (rename_node f_loc (rename_bexp f_clock (fun _ -> -1) (fun _ _ -> -1))) nodes
+            |> List.sort(fun x y -> x.id - y.id);
         edges
     }, f_lab) |> return
 
