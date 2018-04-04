@@ -11,6 +11,25 @@
 open Util;
 open App_Data;
 
+let page_header =
+  <div className="page-header">
+    <h1 className="text-muted"> (str("Munta")) </h1>
+    <p className="lead">
+      (str("Verified Timed Automata Model Checker"))
+    </p>
+  </div>;
+
+let page_header =
+  <div className="page-header">
+    <h1>
+    (str("Munta"))
+    (str(" "))
+    <small>
+      (str("Verified Timed Automata Model Checker"))
+    </small>
+    </h1>
+  </div>;
+
 let globalId = ref(1);
 
 let globalId2 = ref(1.0);
@@ -328,11 +347,6 @@ let send_query = (~onSend, ~onReceive, ~query, ()) => {
   |> ignore;
 };
 
-let load_file = (~reduce, file) => switch (Deserialize.decode(file)) {
-| None => Js.log("Error while reading file") /* TODO: better error indication */
-| Some(state) => reduce(() => LoadState(state))()
-};
-
 let default_filename = "automata.muntax";
 let new_automaton_name = "New Automaton";
 
@@ -354,29 +368,9 @@ let display_init_node = node => [%bs.obj {
 
 let empty_automaton = {nodes: [], edges: [], selected: Nothing, initial: (-1)};
 
-let make = (_children) => {
+let make = (~initialState, _children) => {
   ...component,
-  initialState: () => {
-    automata: [
-      /* (
-        0,
-        (
-          new_automaton_name,
-          {
-            nodes: List.map(init_node, nodes),
-            edges: List.map(init_edge, edges),
-            selected: Nothing,
-            initial: (-1)
-          }
-        )
-      ) */
-    ],
-    selected: None,
-    clocks: "",
-    vars: "",
-    formula: "",
-    reply: None
-  },
+  initialState: () => initialState,
   reducer: (action: action, {selected, automata} as state: state) => {
     let mk_upd = f =>
       switch selected {
@@ -518,13 +512,7 @@ let make = (_children) => {
       };
     let compiled = state_out(state) |> Rename.parse_compile;
     <div className="container">
-
-        <div className="page-header">
-          <h1 className="text-muted"> (str("Munta")) </h1>
-          <p className="lead">
-            (str("Verified Timed Automata Model Checker"))
-          </p>
-        </div>
+        page_header
         <div>
           (
             mk_render(state =>
@@ -681,12 +669,6 @@ let make = (_children) => {
             (state_out(state) |> Print_munta.rename_and_print |> str)
           </pre>
         </div>
-        <div className="dropzone">
-          <Dropzone onDrop=load_file(~reduce) accept=".muntax">
-            <p>(str("Drop a file here, or click to select a file to upload."))</p>
-          </Dropzone>
-        </div>
-      </div>;
-    /* <Test />; */
+      </div>
   }
 };
