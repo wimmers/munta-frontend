@@ -58,7 +58,7 @@ module ExampleURLs = {
 };
 
 let load_file = (~reduce, file) => switch (Deserialize.decode(file)) {
-    | None => Js.log("Error while reading file") /* TODO: better error indication */
+    | None => Util.alert("Error while reading file") /* TODO: better error indication */
     | Some(state) => reduce(() => LoadState(state))()
 };
 

@@ -1,4 +1,7 @@
 /* Util */
+
+[@bs.val] external alert: string => unit = "window.alert";
+
 let str = ReasonReact.stringToElement;
 
 let to_js_bool = Js.Boolean.to_js_boolean;
