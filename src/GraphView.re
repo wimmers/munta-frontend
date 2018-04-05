@@ -44,6 +44,10 @@ let specialType = "special";
 
 let specialChildSubtype = "specialChild";
 
+let specialChildType = specialChildSubtype;
+
+let emptyChildType = "emptyChild";
+
 let emptyEdgeType = "emptyEdge";
 
 let specialEdgeType = "specialEdge";

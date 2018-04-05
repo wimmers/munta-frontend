@@ -274,21 +274,22 @@ let send_query = (~onSend, ~onReceive, ~query, ()) => {
 let default_filename = "automata.muntax";
 let new_automaton_name = "New Automaton";
 
-let display_node = node => [%bs.obj {
+let update_node_type = (t: string, node: GraphView.node) => [%bs.obj {
   id: node##id,
   title: node##title,
   x: node##x,
   y: node##y,
-  _type: GraphView.emptyType
+  _type: t
 }];
 
-let display_init_node = node => [%bs.obj {
-  id: node##id,
-  title: node##title,
-  x: node##x,
-  y: node##y,
-  _type: GraphView.specialType
-}];
+let display_node = (is_initial, is_selected, v) =>
+  {
+    let t =
+      is_initial ?
+      (is_selected ? GraphView.specialChildType  : GraphView.specialType) :
+      (is_selected ? GraphView.emptyChildType : GraphView.emptyType);
+    update_node_type(t, v)
+  };
 
 let empty_automaton = {nodes: [], edges: [], selected: Nothing, initial: (-1)};
 
@@ -472,8 +473,11 @@ let make = (~initialState, _children) => {
                     SwapEdge(v, w, e);
                   })
                 )
-                nodes=(List.map(v => v.node##id == state.initial ?
-                    display_init_node(v.node) : display_node(v.node),
+                nodes=(List.map(
+                  v => display_node(
+                    v.node##id == state.initial,
+                    switch state.selected { | Node(w) => v === w | _ => false},
+                    v.node),
                   state.nodes))
                 edges=(List.map(e => e.edge, state.edges))
                 selected=(selected_to_view(state.selected))
