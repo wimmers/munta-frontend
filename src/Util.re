@@ -35,3 +35,5 @@ let make_new_name = (names, name) => {
   };
   f(1);
 };
+
+let max_list = (f, xs) => List.fold_left((a, x) => max(a, f(x)), 0, xs);

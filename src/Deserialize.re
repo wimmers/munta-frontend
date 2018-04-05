@@ -44,14 +44,25 @@ Json.Decode.({
 
 let state = json =>
 Json.Decode.({
-    automata: json |> field("automata", list(single_state))
-                   |> xs => List.map2((x, y) => (x, y), Util2.upto(0, List.length(xs)), xs),
+    let automata =
+        json 
+        |> field("automata", list(single_state))
+        |> xs => List.map2((x, y) => (x, y), Util2.upto(0, List.length(xs)), xs);
+    let nextId = Util.max_list(
+        a => Util.max_list(
+            (n: App_Data.node) => n.node##id,
+            (snd(snd(a)): App_Data.single_state).nodes),
+        automata);
+    let nextId = max(nextId, List.length(automata)) + 1;
+    {
+    automata,
+    nextId,
     clocks:   json |> field("clocks", string),
     vars:     json |> field("vars", string),
     formula:  json |> field("formula", string),
     App_Data.reply: None,
     selected: None
-});
+}});
 
 let decode = s => switch (s |> Json.parseOrRaise |> state) {
 | result => Some(result)

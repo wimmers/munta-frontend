@@ -108,9 +108,9 @@ let onSelectNode = (v: node) => Js.log(v);
 
 let onDeselectNode = () => Js.log("Deslected node");
 
-let onCreateNode = (graph: single_state, x: float, y: float) => {
+let onCreateNode = (graph: single_state, x: float, y: float, id) => {
   let node: GraphView.node = {
-    "id": nextId(),
+    "id": id,
     "title": "New",
     "x": x,
     "y": y,
@@ -170,6 +170,7 @@ type action =
   | UpdateState(Parse.network_in)
   | StartQuery
   | ReceiveReply(string)
+  | AddAutomaton(string)
   | ChangeAutomaton(int, string)
   | CopyAutomaton(int)
   | DeleteAutomaton(int)
@@ -383,6 +384,18 @@ let make = (~initialState, _children) => {
           reply: None
         })
       };
+    let mk_upd_with_id = f =>
+      switch selected {
+      | None => ReasonReact.NoUpdate
+      | Some(key) =>
+        ReasonReact.Update({
+          ...state,
+          nextId: state.nextId + 1,
+          automata:
+            assoc_upd_with(((label, x)) => (label, f(state.nextId, x)), key, automata),
+          reply: None
+        })
+      };
     let update_node = upd =>
       mk_upd(state => {
         let node = upd(selected_node(state.selected));
@@ -406,6 +419,14 @@ let make = (~initialState, _children) => {
     | UpdateState(s) => ReasonReact.Update(merge_state(state, s))
     | StartQuery => ReasonReact.Update({...state, reply: None})
     | ReceiveReply(s) => ReasonReact.Update({...state, reply: Some(s)})
+    | AddAutomaton(value) =>
+        ReasonReact.Update({
+          ...state,
+          nextId: state.nextId + 1,
+          selected: Some(state.nextId),
+          automata: [(state.nextId, (value, empty_automaton)), ...automata],
+          reply: None
+        })
     | ChangeAutomaton(key, value) =>
       selected == Some(key) ?
         ReasonReact.Update({
@@ -419,20 +440,16 @@ let make = (~initialState, _children) => {
             automata: assoc_upd_with(((_k, x)) => (value, x), key, automata),
             reply: None
           }) :
-          ReasonReact.Update({
-            ...state,
-            selected: Some(key),
-            automata: [(key, (value, empty_automaton)), ...automata],
-            reply: None
-          })
+          ReasonReact.NoUpdate
     | CopyAutomaton(key) =>
       ReasonReact.Update({
-        let new_key = List.length(automata);
         let (name, automaton) = List.assoc(key, automata);
         let names = List.map(((_, (name, _))) => name, automata);
         let name = Util.make_new_name(names, name);
+        let new_key = state.nextId;
         {
           ...state,
+          nextId: state.nextId + 1,
           automata: [(new_key, (name, automaton)), ...automata],
           reply: None
         }
@@ -490,7 +507,7 @@ let make = (~initialState, _children) => {
         let edges = removeEdge(edge, state.edges);
         {...state, edges};
       })
-    | CreateNode(x, y) => mk_upd(state => onCreateNode(state, x, y))
+    | CreateNode(x, y) => mk_upd_with_id((id, state) => onCreateNode(state, x, y, id))
     | CreateEdge(v, w) => mk_upd(state => onCreateEdge(state, v, w))
     | SwapEdge(v, w, e) => mk_upd(state => onSwapEdge(state, v, w, e))
     | UpdateNode(node) =>
@@ -568,7 +585,7 @@ let make = (~initialState, _children) => {
             )
           )
           <ItemList
-            onAdd=(reduce(() => ChangeAutomaton(List.length(state.automata), new_automaton_name)))
+            onAdd=(reduce(() => AddAutomaton(new_automaton_name)))
             onChangeFocus=(reduce(k => ChangeAutomaton(k, List.assoc(k, state.automata) |> fst)))
             onCopy=(reduce(x => CopyAutomaton(x)))
             onDelete=(reduce(x => DeleteAutomaton(x)))

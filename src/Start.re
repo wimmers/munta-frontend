@@ -1,4 +1,11 @@
-[@bs.module] external test: string = "./example/test.muntax";
+[@bs.module] external test: string = "./example/simple.muntax";
+[@bs.module] external fddi: string = "./example/HDDI_02.muntax";
+
+let examples =
+[
+    ("Simple", test),
+    ("FDDI token ring protocol", fddi)
+];
 
 type state =
   | Initialized(App_Data.state)
@@ -10,6 +17,7 @@ let component = ReasonReact.reducerComponent("StartScreen");
 
 let empty_state: App_Data.state = {
     automata: [],
+    nextId: 0,
     selected: None,
     clocks: "",
     vars: "",
@@ -97,7 +105,7 @@ let make = _children => {
             <h3 className="display-3">(Util.str("or start from an example:"))</h3>
             <ExampleURLs
                 onLoad=load_file(~reduce)
-                examples=[("Test1", test), ("Test2", test)]
+                examples
             />
         </div>
         </div>

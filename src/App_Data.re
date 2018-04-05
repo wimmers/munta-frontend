@@ -29,7 +29,8 @@ type node = {
     clocks: string,
     vars: string,
     formula: string,
-    reply: option(string)
+    reply: option(string),
+    nextId: int /* For automata and nodes */
   };
 
   let selected_to_view: selected => GraphView.selected =
