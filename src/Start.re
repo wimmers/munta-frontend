@@ -88,8 +88,9 @@ let make = _children => {
             <Dropzone
                 accept=".muntax"
                 onDrop=load_file(~reduce)
+                className="container dropzone lead"
             >
-                <p>(Util.str("Drop a file here, or click to select a file to upload."))</p>
+                (Util.str("Drop a file here, or click to select a file to upload."))
             </Dropzone>
             </div>
             <h3 className="display-3">(Util.str("or "))

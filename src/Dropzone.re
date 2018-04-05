@@ -3,7 +3,8 @@
 let make =
     (
         ~onDrop: string => unit,
-        ~accept: option(string) =?
+        ~accept: option(string) =?,
+        ~className: option(string) =?,
     ) => {
         let read_file_on_drop = [%raw {|
             function(onDrop, files) {
@@ -17,6 +18,7 @@ let make =
             ~props={
                 "onDropAccepted": files => read_file_on_drop(onDrop, files),
                 "accept": Js.Nullable.from_opt(accept),
+                "className": Js.Nullable.from_opt(className),
                 "multiple": Js.false_
             }
         )
