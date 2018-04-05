@@ -111,7 +111,7 @@ let onDeselectNode = () => Js.log("Deslected node");
 let onCreateNode = (graph: single_state, x: float, y: float) => {
   let node: GraphView.node = {
     "id": nextId(),
-    "title": "Node N",
+    "title": "New",
     "x": x,
     "y": y,
     "_type": GraphView.emptyType
