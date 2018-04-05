@@ -13,14 +13,6 @@ open App_Data;
 
 let page_header =
   <div className="page-header">
-    <h1 className="text-muted"> (str("Munta")) </h1>
-    <p className="lead">
-      (str("Verified Timed Automata Model Checker"))
-    </p>
-  </div>;
-
-let page_header =
-  <div className="page-header">
     <h1>
     (str("Munta"))
     (str(" "))
@@ -30,75 +22,6 @@ let page_header =
     </h1>
   </div>;
 
-let globalId = ref(1);
-
-let globalId2 = ref(1.0);
-
-let nextId = () => {
-  let n = globalId^;
-  globalId := n + 1;
-  n;
-};
-
-let nextId2 = () => {
-  let n = globalId2^;
-  globalId2 := n +. 100.0;
-  n;
-};
-
-let nodeA = {
-  "id": nextId(),
-  "title": "A",
-  "x": 258.3976135253906,
-  "y": 331.9783248901367,
-  "_type": GraphView.specialType
-};
-
-let nodeB = {
-  "id": nextId(),
-  "title": "B",
-  "x": 593.9393920898438,
-  "y": 260.6060791015625,
-  "_type": GraphView.emptyType
-};
-
-let nodeC = {
-  "id": nextId(),
-  "title": "C",
-  "x": 237.5757598876953,
-  "y": 61.81818389892578,
-  "_type": GraphView.emptyType
-};
-
-let nodeD = {
-  "id": nextId(),
-  "title": "D",
-  "x": 600.5757598876953,
-  "y": 600.81818389892578,
-  "_type": GraphView.emptyType
-};
-
-let nextTestNode = () => {
-  let n = nextId();
-  let n2 = nextId2();
-  {
-    "id": n,
-    "title": "Node C",
-    "x": 600.5757598876953 +. n2,
-    "y": 600.81818389892578 +. n2,
-    "type": GraphView.emptyType
-  };
-};
-
-
-let nodes = [nodeA, nodeB, nodeC, nodeD];
-
-let edges = [
-  {"source": 1, "target": 2, "_type": GraphView.specialEdgeType},
-  {"source": 2, "target": 4, "_type": GraphView.emptyEdgeType}
-];
-
-let init_state: GraphView.graph_state = {nodes, edges};
 
 let init_node = v => {invariant: "", node: v};
 
