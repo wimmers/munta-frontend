@@ -50,24 +50,27 @@ let make = (
             |> ReasonReact.arrayToElement
         )
             <div className="col-sm-3 btn-group btn-group-md" role="group">
-                <input
-                    _type="button"
+                <button
                     className="btn btn-default"
-                    value="Add"
                     onClick=(_evt => onAdd())
-                />
-                <input
-                    _type="button"
+                >
+                    <span className="glyphicon glyphicon-plus" />
+                    <span className="sr-only">(str("Add"))</span>
+                </button>
+                <button
                     className=disabled_class
-                    value="Copy"
                     onClick=(on_selected(onCopy))
-                />
-                <input
-                    _type="button"
+                >
+                    <span className="glyphicon glyphicon-duplicate" />
+                    <span className="sr-only">(str("Copy"))</span>
+                </button>
+                <button
                     className=disabled_class
-                    value="Delete"
                     onClick=(on_selected(onDelete))
-                />
+                >
+                    <span className="glyphicon glyphicon-trash" />
+                    <span className="sr-only">(str("Delete"))</span>
+                </button>
             </div>
         </div>
         </div>

@@ -77,7 +77,7 @@
 }
 
 .dropzone{
-  border: rgba(80, 47, 78, 0.137) dotted 1px;
+  border: rgba(80, 47, 78, 0.137) dashed 0.2px;
   height: 120px;
   text-align: center;
   vertical-align: middle;
