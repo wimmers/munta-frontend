@@ -253,11 +253,13 @@ let renderInitial = (~reduce, ~state: single_state) =>
   | _ => ReasonReact.nullElement
   };
 
+let port = 3069;
+
 let send_query = (~onSend, ~onReceive, ~query, ()) => {
   onSend();
   Js.Promise.(
     Fetch.fetchWithInit(
-      "http://localhost:8000/test",
+      "http://localhost:" ++ string_of_int(port) ++ "/munta",
       Fetch.RequestInit.make(
         ~method_=Post,
         ~body=Fetch.BodyInit.make(query),
