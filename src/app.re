@@ -6,22 +6,21 @@
 
 [@bs.module] external logo : string = "./logo.svg";
 
-[@bs.module] external fileDownload : string => string => unit = "js-file-download";
+[@bs.module]
+external fileDownload : (string, string) => unit = "js-file-download";
 
 open Util;
+
 open App_Data;
 
 let page_header =
   <div className="page-header">
     <h1>
-    (str("Munta"))
-    (str(" "))
-    <small>
-      (str("Verified Timed Automata Model Checker"))
-    </small>
+      (str("Munta"))
+      (str(" "))
+      <small> (str("Verified Timed Automata Model Checker")) </small>
     </h1>
   </div>;
-
 
 let init_node = v => {invariant: "", node: v};
 
@@ -123,10 +122,10 @@ module CheckBox = {
   let component = ReasonReact.statelessComponent("CheckBox");
   let make = (~onCheck, ~onUncheck, ~desc, ~checked, _children) => {
     ...component,
-    render: self =>
-    {
+    render: self => {
       let className = "form-control btn btn-large btn-default";
-      let className = className ++ (checked ? " active" : " btn-cursor disabled");
+      let className =
+        className ++ (checked ? " active" : " btn-cursor disabled");
       <div className="form-group col-md-3">
         <label htmlFor="checkbox-button"> (str(desc)) </label>
         <input
@@ -136,7 +135,7 @@ module CheckBox = {
           value=(checked ? "yes" : "no")
           onClick=(_evt => checked ? onUncheck() : onCheck())
         />
-      </div>
+      </div>;
     }
   };
 };
@@ -267,29 +266,32 @@ let send_query = (~onSend, ~onReceive, ~query, ()) => {
     )
     |> then_(Fetch.Response.text)
     |> then_(text => onReceive(text) |> resolve)
+    |> catch(_error =>
+         Util.alert("Could not connect to verification server!") |> resolve
+       )
   )
   |> ignore;
 };
 
 let default_filename = "automata.muntax";
+
 let new_automaton_name = "New Automaton";
 
-let update_node_type = (t: string, node: GraphView.node) => [%bs.obj {
-  id: node##id,
-  title: node##title,
-  x: node##x,
-  y: node##y,
-  _type: t
-}];
+let update_node_type = (t: string, node: GraphView.node) => {
+  "id": node##id,
+  "title": node##title,
+  "x": node##x,
+  "y": node##y,
+  "_type": t
+};
 
-let display_node = (is_initial, is_selected, v) =>
-  {
-    let t =
-      is_initial ?
-      (is_selected ? GraphView.specialChildType  : GraphView.specialType) :
-      (is_selected ? GraphView.emptyChildType : GraphView.emptyType);
-    update_node_type(t, v)
-  };
+let display_node = (is_initial, is_selected, v) => {
+  let t =
+    is_initial ?
+      is_selected ? GraphView.specialChildType : GraphView.specialType :
+      is_selected ? GraphView.emptyChildType : GraphView.emptyType;
+  update_node_type(t, v);
+};
 
 let empty_automaton = {nodes: [], edges: [], selected: Nothing, initial: (-1)};
 
@@ -316,7 +318,11 @@ let make = (~initialState, _children) => {
           ...state,
           nextId: state.nextId + 1,
           automata:
-            assoc_upd_with(((label, x)) => (label, f(state.nextId, x)), key, automata),
+            assoc_upd_with(
+              ((label, x)) => (label, f(state.nextId, x)),
+              key,
+              automata
+            ),
           reply: None
         })
       };
@@ -344,13 +350,13 @@ let make = (~initialState, _children) => {
     | StartQuery => ReasonReact.Update({...state, reply: None})
     | ReceiveReply(s) => ReasonReact.Update({...state, reply: Some(s)})
     | AddAutomaton(value) =>
-        ReasonReact.Update({
-          ...state,
-          nextId: state.nextId + 1,
-          selected: Some(state.nextId),
-          automata: [(state.nextId, (value, empty_automaton)), ...automata],
-          reply: None
-        })
+      ReasonReact.Update({
+        ...state,
+        nextId: state.nextId + 1,
+        selected: Some(state.nextId),
+        automata: [(state.nextId, (value, empty_automaton)), ...automata],
+        reply: None
+      })
     | ChangeAutomaton(key, value) =>
       selected == Some(key) ?
         ReasonReact.Update({
@@ -366,18 +372,20 @@ let make = (~initialState, _children) => {
           }) :
           ReasonReact.NoUpdate
     | CopyAutomaton(key) =>
-      ReasonReact.Update({
-        let (name, automaton) = List.assoc(key, automata);
-        let names = List.map(((_, (name, _))) => name, automata);
-        let name = Util.make_new_name(names, name);
-        let new_key = state.nextId;
+      ReasonReact.Update(
         {
-          ...state,
-          nextId: state.nextId + 1,
-          automata: [(new_key, (name, automaton)), ...automata],
-          reply: None
+          let (name, automaton) = List.assoc(key, automata);
+          let names = List.map(((_, (name, _))) => name, automata);
+          let name = Util.make_new_name(names, name);
+          let new_key = state.nextId;
+          {
+            ...state,
+            nextId: state.nextId + 1,
+            automata: [(new_key, (name, automaton)), ...automata],
+            reply: None
+          };
         }
-      })
+      )
     | DeleteAutomaton(key) =>
       ReasonReact.Update({
         ...state,
@@ -399,13 +407,13 @@ let make = (~initialState, _children) => {
       update_node(node =>
         {
           ...node,
-          node: [%bs.obj {
-            id: node.node##id,
-            title: s,
-            x: node.node##x,
-            y: node.node##y,
-            _type: GraphView.emptyType
-          }]
+          node: {
+            "id": node.node##id,
+            "title": s,
+            "x": node.node##x,
+            "y": node.node##y,
+            "_type": GraphView.emptyType
+          }
         }
       )
     | UpdateEdgeGuard(s) => update_edge(edge => {...edge, guard: s})
@@ -431,7 +439,8 @@ let make = (~initialState, _children) => {
         let edges = removeEdge(edge, state.edges);
         {...state, edges};
       })
-    | CreateNode(x, y) => mk_upd_with_id((id, state) => onCreateNode(state, x, y, id))
+    | CreateNode(x, y) =>
+      mk_upd_with_id((id, state) => onCreateNode(state, x, y, id))
     | CreateEdge(v, w) => mk_upd(state => onCreateEdge(state, v, w))
     | SwapEdge(v, w, e) => mk_upd(state => onSwapEdge(state, v, w, e))
     | UpdateNode(node) =>
@@ -453,11 +462,11 @@ let make = (~initialState, _children) => {
       };
     let compiled = state_out(state) |> Rename.parse_compile;
     <div className="container">
-        page_header
-        <div>
-          (
-            mk_render(state =>
-              <div className="graph-panel">
+      page_header
+      <div>
+        (
+          mk_render(state =>
+            <div className="graph-panel">
               <GraphView
                 onSelectNode=(reduce(v => SelectNode(v)))
                 onDeselectNode=(reduce(() => Deselect))
@@ -473,75 +482,94 @@ let make = (~initialState, _children) => {
                     SwapEdge(v, w, e);
                   })
                 )
-                nodes=(List.map(
-                  v => display_node(
-                    v.node##id == state.initial,
-                    switch state.selected { | Node(w) => v === w | _ => false},
-                    v.node),
-                  state.nodes))
+                nodes=(
+                  List.map(
+                    v =>
+                      display_node(
+                        v.node##id == state.initial,
+                        switch state.selected {
+                        | Node(w) => v === w
+                        | _ => false
+                        },
+                        v.node
+                      ),
+                    state.nodes
+                  )
+                )
                 edges=(List.map(e => e.edge, state.edges))
                 selected=(selected_to_view(state.selected))
                 graphControls=false
                 enableFocus=true
               />
-              </div>
-            )
+            </div>
           )
-          <div className="row">
-            <Declaration
-              desc="Clocks:"
-              placeholder="Clock Declarations\nExample: c_1, c_2, c_3"
-              value=state.clocks
-              onChange=(reduce(evt => UpdateClocks(evt)))
-            />
-            <Declaration
-              desc="Variables:"
-              placeholder="Declarations of integer variables\nExample: x[-10:10], y[0:3]"
-              value=state.vars
-              onChange=(reduce(evt => UpdateVars(evt)))
-            />
-          </div>
-          (
-            mk_render(state =>
-              <div className="row">
-                (renderUpdate(~reduce, ~state))
-                (renderGuard(~reduce, ~state))
-                (renderLabel(~reduce, ~state))
-                (renderInitial(~reduce, ~state))
-              </div>
-            )
-          )
-          <ItemList
-            onAdd=(reduce(() => AddAutomaton(new_automaton_name)))
-            onChangeFocus=(reduce(k => ChangeAutomaton(k, List.assoc(k, state.automata) |> fst)))
-            onCopy=(reduce(x => CopyAutomaton(x)))
-            onDelete=(reduce(x => DeleteAutomaton(x)))
-            onUpdate=(reduce(((k, v)) => ChangeAutomaton(k, v)))
-            items=(List.map(((key, (label, _v))) => (key, label), state.automata) |> List.rev)
-            selected=state.selected
-            desc="Automata:"
+        )
+        <div className="row">
+          <Declaration
+            desc="Clocks:"
+            placeholder="Clock Declarations\nExample: c_1, c_2, c_3"
+            value=state.clocks
+            onChange=(reduce(evt => UpdateClocks(evt)))
+          />
+          <Declaration
+            desc="Variables:"
+            placeholder="Declarations of integer variables\nExample: x[-10:10], y[0:3]"
+            value=state.vars
+            onChange=(reduce(evt => UpdateVars(evt)))
           />
         </div>
-        <div className="row">
-            <FormulaBox
-              desc="Formula:"
-              placeholder="Formula"
-              value=state.formula
-              onChange=(reduce(evt => UpdateFormula(evt)))
-            />
-        </div>
         (
-          switch compiled {
-          | Error.Error(_) => ReasonReact.nullElement
-          | Error.Result((_, _, r)) =>
-            <div className="btn-toolbar btn-toolbar-lg" role="toolbar">
+          mk_render(state =>
+            <div className="row">
+              (renderUpdate(~reduce, ~state))
+              (renderGuard(~reduce, ~state))
+              (renderLabel(~reduce, ~state))
+              (renderInitial(~reduce, ~state))
+            </div>
+          )
+        )
+        <ItemList
+          onAdd=(reduce(() => AddAutomaton(new_automaton_name)))
+          onChangeFocus=(
+            reduce(k =>
+              ChangeAutomaton(k, List.assoc(k, state.automata) |> fst)
+            )
+          )
+          onCopy=(reduce(x => CopyAutomaton(x)))
+          onDelete=(reduce(x => DeleteAutomaton(x)))
+          onUpdate=(reduce(((k, v)) => ChangeAutomaton(k, v)))
+          items=(
+            List.map(((key, (label, _v))) => (key, label), state.automata)
+            |> List.rev
+          )
+          selected=state.selected
+          desc="Automata:"
+        />
+      </div>
+      <div className="row">
+        <FormulaBox
+          desc="Formula:"
+          placeholder="Formula"
+          value=state.formula
+          onChange=(reduce(evt => UpdateFormula(evt)))
+        />
+      </div>
+      (
+        switch compiled {
+        | Error.Error(_) => ReasonReact.nullElement
+        | Error.Result((_, _, r)) =>
+          <div className="btn-toolbar btn-toolbar-lg" role="toolbar">
             <div className="btn-group btn-group-lg mr-2" role="group">
               <input
                 _type="button"
                 className="btn btn-primary"
                 value="Save"
                 onClick=(
-                  _evt => state |> Serialize.state |> Json.stringify |> s => fileDownload(s, default_filename)
+                  _evt =>
+                    state
+                    |> Serialize.state
+                    |> Json.stringify
+                    |> (s => fileDownload(s, default_filename))
                 )
               />
             </div>
@@ -550,18 +578,22 @@ let make = (~initialState, _children) => {
                 _type="button"
                 className="btn btn-info"
                 value="Check input"
-                onClick=(_evt => {
-                  reduce(_evt =>
-                    UpdateState(
-                      state
-                      |> state_out
-                      |> Parse.compile
-                      |> Error.the_result
-                      |> Parse.show_network
-                    )
-                  ) ();
-                  reduce(_evt => Deselect) ();
-                })
+                onClick=(
+                  _evt => {
+                    reduce(
+                      _evt =>
+                        UpdateState(
+                          state
+                          |> state_out
+                          |> Parse.compile
+                          |> Error.the_result
+                          |> Parse.show_network
+                        ),
+                      ()
+                    );
+                    reduce(_evt => Deselect, ());
+                  }
+                )
               />
             </div>
             <div className="btn-group btn-group-lg" role="group">
@@ -590,10 +622,10 @@ let make = (~initialState, _children) => {
                 )
               />
             </div>
-            </div>
-          }
-        )
-        (
+          </div>
+        }
+      )
+      (
         switch state.reply {
         | None => ReasonReact.nullElement
         | Some(s) =>
@@ -604,15 +636,15 @@ let make = (~initialState, _children) => {
             <pre id="verification-output"> (str(s)) </pre>
           </div>
         }
-        )
-        <div className="output">
-          <label htmlFor="compilation-output">
-            (str("Result of parsing/compilation:"))
-          </label>
-          <pre id="compiliation-output">
-            (state_out(state) |> Print_munta.rename_and_print |> str)
-          </pre>
-        </div>
+      )
+      <div className="output">
+        <label htmlFor="compilation-output">
+          (str("Result of parsing/compilation:"))
+        </label>
+        <pre id="compiliation-output">
+          (state_out(state) |> Print_munta.rename_and_print |> str)
+        </pre>
       </div>
+    </div>;
   }
 };
