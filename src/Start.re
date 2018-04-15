@@ -2,6 +2,8 @@
 
 [@bs.module] external fddi : string = "./example/HDDI_02.muntax";
 
+[@bs.module] external light_switch : string = "./example/light_switch.muntax";
+
 let is_chrome: Js.boolean = [%bs.raw {| (window.chrome != undefined) |}];
 
 let is_chrome = Js.to_bool(is_chrome);
@@ -11,7 +13,11 @@ let best_used_on_chrome =
     (Util.str("This application is best used with Google Chrome."))
   </div>;
 
-let examples = [("Simple", test), ("FDDI token ring protocol", fddi)];
+let examples = [
+    ("Simple", test),
+    ("Light Switch", light_switch),
+    ("FDDI token ring protocol", fddi),
+];
 
 type state =
   | Initialized(App_Data.state)
