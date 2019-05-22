@@ -30,7 +30,8 @@ type state = {
   vars: string,
   formula: string,
   reply: option(string),
-  nextId: int /* For automata and nodes */
+  nextId: int /* For automata and nodes */,
+  show_help: bool
 };
 
 let selected_to_view: selected => GraphView.selected =

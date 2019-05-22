@@ -11,6 +11,15 @@ let best_used_on_chrome =
     (Util.str("This application is best used with Google Chrome."))
   </div>;
 
+let page_header =
+  <div className="page-header">
+    <h1>
+      (Util.str("Munta"))
+      (Util.str(" "))
+      <small> (Util.str("Verified Timed Automata Model Checker")) </small>
+    </h1>
+  </div>;
+
 let examples = [
   ("Simple", test),
   ("Light Switch", light_switch),
@@ -34,6 +43,7 @@ let empty_state: App_Data.state = {
   vars: "",
   formula: "",
   reply: None,
+  show_help: false,
 };
 
 [@react.component]
@@ -95,7 +105,7 @@ let make = _children => {
     | Initialized(state) => <App initialState=state />
     | Started =>
       <div className="container">
-        App.page_header
+        page_header
         (is_chrome ? React.null : best_used_on_chrome)
         <div className="jumbotron">
           <h1 className="display-3"> (Util.str("Get started")) </h1>

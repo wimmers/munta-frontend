@@ -13,13 +13,37 @@ open Util;
 
 open App_Data;
 
-let page_header =
+
+let page_header = (show_help, onClick) =>
   <div className="page-header">
     <h1>
       (str("Munta"))
       (str(" "))
       <small> (str("Verified Timed Automata Model Checker")) </small>
+      <button className=("btn btn-lg" ++ (show_help ? " active" : "")) onClick>
+        <span className="glyphicon glyphicon-question-sign" />
+        <span className="sr-only"> (str(show_help ? "Show help" : "Hide help")) </span>
+      </button>
     </h1>
+  </div>;
+
+let help_text =
+  <div>
+    <h4>(str("How to use:"))</h4>
+    <p>
+      (str("Mouse and keyboard controls"))
+    </p>
+    <ul>
+      <li>(str("Click on any automaton name to show its visual representation"))</li>
+      <li>(str("Click on nodes or edges to select them"))</li>
+      <li>(str("Once a node is selected, drag it with the mouse to move it around"))</li>
+      <li>(str("Use 'Shift + Click' to add new nodes"))</li>
+      <li>(str("Use 'Shift + Drag' to add edges"))</li>
+      <li>(str("To remove a node or edge, select it and press the 'Delete' key"))</li>
+      <li>(str("Click anywhere in the canvas and drag to move it around"))</li>
+      <li>(str("Use the scroll wheel to zoom"))</li>
+    </ul>
+    <p></p>
   </div>;
 
 let init_node = v => {invariant: "", node: v};
@@ -88,6 +112,7 @@ let update_edge = (edges, edge) =>
   List.map(e => e.edge === edge.edge ? edge : e, edges);
 
 type action =
+  | ToggleHelp
   | LoadState(state)
   | UpdateState(Parse.network_in)
   | StartQuery
@@ -355,6 +380,7 @@ let make = (~initialState, _children) => {
         };
       });
     switch (action) {
+    | ToggleHelp => ReasonReact.Update({...state, show_help: !state.show_help})
     | LoadState(s) => ReasonReact.Update(s)
     | UpdateState(s) => ReasonReact.Update(merge_state(state, s))
     | StartQuery => ReasonReact.Update({...state, reply: None})
@@ -474,7 +500,8 @@ let make = (~initialState, _children) => {
       };
     let compiled = state_out(state) |> Rename.parse_compile;
     <div className="container">
-      page_header
+      (page_header(state.show_help, (_evt => send(ToggleHelp))))
+      (state.show_help ? help_text : ReasonReact.null)
       <div>
         (
           mk_render(state =>
@@ -615,7 +642,11 @@ let make = (~initialState, _children) => {
                     send_query(
                       ~onSend=() => send(StartQuery),
                       ~onReceive=s => send(ReceiveReply(s)),
-                      ~query=Print_munta.print(r),
+                      ~query=(
+                        state
+                        |> Serialize.state
+                        |> Json.stringify
+                      ),
                       (),
                     )
                 )

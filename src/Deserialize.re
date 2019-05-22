@@ -67,6 +67,7 @@ let state = json => {
     formula: json |> field("formula", string),
     App_Data.reply: None,
     selected: None,
+    show_help: false,
   };
 };
 
