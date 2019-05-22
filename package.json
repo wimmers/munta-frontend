@@ -3,13 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "d3": "^4.12.2",
-    "radium": "^0.19.6",
-    "react-digraph": "^2.0.4",
-    "react-icons": "^2.2.7",
-    "reason-scripts": "0.8.0"
+    "@glennsl/bs-json": "^3.0.0",
+    "acorn": "^6.1.1",
+    "ajv": "^6.10.0",
+    "bn.js": "^4.11.8",
+    "bs-bn.js": "0.0.2",
+    "bs-fetch": "^0.3.1",
+    "bs-platform": "^5.0.4",
+    "bs-react-dropzone": "^0.3.3",
+    "d3": "^5.9.2",
+    "gh-pages": "^2.0.1",
+    "js-file-download": "^0.4.5",
+    "npm": "^6.9.0",
+    "radium": "^0.25.1",
+    "react-digraph": "4.1.10",
+    "react-dropzone": "^10.1.4",
+    "react-icons": "^3.7.0",
+    "reason-scripts": "1.0.0",
+    "typescript": "^3.4.5"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
@@ -18,8 +33,15 @@
   },
   "devDependencies": {
     "bs-jest": "^0.3.2",
-    "react": "^16.2.0",
-    "react-dom": "^16.2.0",
-    "reason-react": "^0.3.0"
-  }
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "reason-react": "^0.7.0"
+  },
+  "homepage": ".",
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
 }

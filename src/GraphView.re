@@ -1,32 +1,32 @@
 [@bs.module "./graph.js"]
-external graphView : ReasonReact.reactClass = "default";
+external graphView: ReasonReact.reactClass = "default";
 
-type edge = Js.t({
+type edge = {
   .
-  source: int,
-  target: int,
-  _type: string
-});
+  "source": int,
+  "target": int,
+  "_type": string,
+};
 
-type node = Js.t({
+type node = {
   .
-  id: int,
-  title: string,
-  x: float,
-  y: float,
-  _type: string
-});
+  "id": int,
+  "title": string,
+  "x": float,
+  "y": float,
+  "_type": string,
+};
 
 type graph_state = {
   nodes: list(node),
-  edges: list(edge)
+  edges: list(edge),
 };
 
-type js_graph_state = Js.t({
+type js_graph_state = {
   .
-  nodes: array(node),
-  edges: array(edge)
-});
+  "nodes": array(node),
+  "edges": array(edge),
+};
 
 type selected =
   | Nothing
@@ -68,10 +68,10 @@ let make =
       ~selected: selected,
       ~enableFocus: bool=false,
       ~graphControls: bool=true,
-      children
+      children,
     ) => {
   let (selectedEdge, selectedNode) =
-    switch selected {
+    switch (selected) {
     | Nothing => (Js.Nullable.null, Js.Nullable.null)
     | Node(v) => (Js.Nullable.null, Js.Nullable.return(v))
     | Edge(e) => (Js.Nullable.return(e), Js.Nullable.null)
@@ -95,6 +95,6 @@ let make =
       "graphControls": graphControls |> Util.to_js_bool,
       "enableFocus": enableFocus |> Util.to_js_bool,
     },
-    children
+    children,
   );
 };

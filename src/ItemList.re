@@ -4,6 +4,7 @@ type item = (int, string);
 
 type state = list(item);
 
+[@react.component]
 module Item = {
   let component = ReasonReact.statelessComponent("Item");
   let make = (~item: item, ~onClick, ~onChange, ~highlighted, _children) => {
@@ -11,7 +12,7 @@ module Item = {
     render: _self =>
       <div className="col-sm-2 text-box-outer">
         <input
-          _type="text"
+          type_="text"
           className=(
             "form-control text-box"
             ++ (highlighted ? " text-box-highlight" : "")
@@ -22,7 +23,7 @@ module Item = {
           onChange=(evt => onChange((fst(item), valueFromEvent(evt))))
           value=(snd(item))
         />
-      </div>
+      </div>,
   };
 };
 
@@ -38,12 +39,12 @@ let make =
       ~items,
       ~selected,
       ~desc,
-      _children
+      _children,
     ) => {
   ...component,
-  render: ({reduce, state, handle}) => {
+  render: ({send, state, handle}) => {
     let on_selected = (f, _evt) =>
-      switch selected {
+      switch (selected) {
       | None => ()
       | Some(key) => f(key)
       };
@@ -62,10 +63,10 @@ let make =
                 onChange=(v => onUpdate(v))
                 highlighted=(Some(fst(item)) == selected)
               />,
-            items
+            items,
           )
           |> Array.of_list
-          |> ReasonReact.arrayToElement
+          |> React.array
         )
         <div className="col-sm-3 btn-group btn-group-md" role="group">
           <button className="btn btn-default" onClick=(_evt => onAdd())>
@@ -83,5 +84,5 @@ let make =
         </div>
       </div>
     </div>;
-  }
+  },
 };

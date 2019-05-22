@@ -9,7 +9,8 @@
     "bs-jest",
     "bs-fetch",
     "bs-bn.js",
-    "@glennsl/bs-json"
+    "@glennsl/bs-json",
+    "bs-react-dropzone"
   ],
   "reason": {
     "react-jsx": 2
