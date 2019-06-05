@@ -279,6 +279,6 @@
         }
     ],
     "clocks": "x0, x1, y1, z1, x2, y2, z2",
-    "vars": "id[-1:2]",
+    "vars": "",
     "formula": "E<> ((ST1.z_sync || ST1.z_async || ST1.y_sync || ST1.y_async)  && (ST2.z_sync || ST2.z_async || ST2.y_sync || ST2.y_async)  )"
 }
