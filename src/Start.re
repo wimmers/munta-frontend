@@ -44,6 +44,7 @@ let empty_state: App_Data.state = {
   formula: "",
   reply: None,
   show_help: false,
+  verification_status: Invalidated,
 };
 
 [@react.component]

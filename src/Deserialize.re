@@ -68,6 +68,7 @@ let state = json => {
     App_Data.reply: None,
     selected: None,
     show_help: false,
+    verification_status: Invalidated
   };
 };
 

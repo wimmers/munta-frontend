@@ -23,6 +23,13 @@ type single_state = {
   edges: list(edge),
 };
 
+type verification_status =
+  | Invalidated
+  | Computing
+  | Unknown
+  | Rejected
+  | Verified;
+
 type state = {
   automata: list((int, (string, single_state))),
   selected: option(int),
@@ -31,7 +38,8 @@ type state = {
   formula: string,
   reply: option(string),
   nextId: int /* For automata and nodes */,
-  show_help: bool
+  show_help: bool,
+  verification_status: verification_status,
 };
 
 let selected_to_view: selected => GraphView.selected =

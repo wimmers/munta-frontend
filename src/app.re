@@ -303,6 +303,19 @@ let send_query = (~onSend, ~onReceive, ~query, ()) => {
   |> ignore;
 };
 
+let send_browser_query = (~onSend, ~onReceive, ~query, ()) => {
+  let promise = Js.Promise.make((~resolve, ~reject) => resolve(. query()))
+  onSend();
+  Js.Promise.(
+    promise
+    |> then_(text => onReceive(text) |> resolve)
+    |> catch(_error =>
+         Util.alert("Could not run verifier!") |> resolve
+       )
+  )
+  |> ignore;
+};
+
 let default_filename = "automata.muntax";
 
 let new_automaton_name = "New Automaton";
@@ -330,6 +343,14 @@ let empty_automaton = {
   initial: (-1),
 };
 
+let status_from_reply = s => {
+  Js.String.includes("Property is satisfied", s) ?
+  Verified :
+  Js.String.includes("Property is not satisfied", s) ?
+  Rejected :
+  Unknown
+};
+
 let make = (~initialState, _children) => {
   ...component,
   initialState: () => initialState,
@@ -343,6 +364,7 @@ let make = (~initialState, _children) => {
           automata:
             assoc_upd_with(((label, x)) => (label, f(x)), key, automata),
           reply: None,
+          verification_status: Invalidated,
         })
       };
     let mk_upd_with_id = f =>
@@ -359,6 +381,7 @@ let make = (~initialState, _children) => {
               automata,
             ),
           reply: None,
+          verification_status: Invalidated,
         })
       };
     let update_node = upd =>
@@ -383,8 +406,8 @@ let make = (~initialState, _children) => {
     | ToggleHelp => ReasonReact.Update({...state, show_help: !state.show_help})
     | LoadState(s) => ReasonReact.Update(s)
     | UpdateState(s) => ReasonReact.Update(merge_state(state, s))
-    | StartQuery => ReasonReact.Update({...state, reply: None})
-    | ReceiveReply(s) => ReasonReact.Update({...state, reply: Some(s)})
+    | StartQuery => ReasonReact.Update({...state, reply: None, verification_status: Computing})
+    | ReceiveReply(s) => ReasonReact.Update({...state, reply: Some(s), verification_status: status_from_reply(s)})
     | AddAutomaton(value) =>
       ReasonReact.Update({
         ...state,
@@ -392,6 +415,7 @@ let make = (~initialState, _children) => {
         selected: Some(state.nextId),
         automata: [(state.nextId, (value, empty_automaton)), ...automata],
         reply: None,
+        verification_status: Invalidated,
       })
     | ChangeAutomaton(key, value) =>
       selected == Some(key) ?
@@ -406,6 +430,7 @@ let make = (~initialState, _children) => {
             automata:
               assoc_upd_with(((_k, x)) => (value, x), key, automata),
             reply: None,
+            verification_status: Invalidated,
           }) :
           ReasonReact.NoUpdate
     | CopyAutomaton(key) =>
@@ -420,6 +445,7 @@ let make = (~initialState, _children) => {
             nextId: state.nextId + 1,
             automata: [(new_key, (name, automaton)), ...automata],
             reply: None,
+            verification_status: Invalidated,
           };
         },
       )
@@ -429,16 +455,17 @@ let make = (~initialState, _children) => {
         selected: None,
         automata: List.remove_assoc(key, automata),
         reply: None,
+        verification_status: Invalidated,
       })
     | UpdateClocks(s) =>
-      ReasonReact.Update({...state, clocks: s, reply: None})
-    | UpdateVars(s) => ReasonReact.Update({...state, vars: s, reply: None})
+      ReasonReact.Update({...state, clocks: s, reply: None, verification_status: Invalidated,})
+    | UpdateVars(s) => ReasonReact.Update({...state, vars: s, reply: None, verification_status: Invalidated,})
     | SetInitial =>
       mk_upd(automaton =>
         {...automaton, initial: selected_node(automaton.selected).node##id}
       )
     | UpdateFormula(s) =>
-      ReasonReact.Update({...state, formula: s, reply: None})
+      ReasonReact.Update({...state, formula: s, reply: None, verification_status: Invalidated,})
     | UnsetInitial => mk_upd(automaton => {...automaton, initial: (-1)})
     | UpdateNodeInvariant(s) => update_node(node => {...node, invariant: s})
     | UpdateNodeLabel(s) =>
@@ -657,9 +684,46 @@ let make = (~initialState, _children) => {
                 value="Verify in your browser"
                 onClick=(
                   _evt =>
-                    send(ReceiveReply(Checker.convert_run_print(r, ())))
+                    send_browser_query(
+                      ~onSend=() => send(StartQuery),
+                      ~onReceive=s => send(ReceiveReply(s)),
+                      ~query=Checker.convert_run_print(r),
+                     ()
+                    )
                 )
               />
+            </div>
+            <div className="btn-group btn-group-lg">
+            (
+              switch (state.verification_status) {
+              | Invalidated => React.null
+              | Verified =>
+                <div>
+                  <span className="glyphicon glyphicon-ok gi-3x success-color"/>
+                  <span className="sr-only">(str("Property is satisified"))</span>
+                </div>
+              | Rejected =>
+                <div>
+                  <span className="glyphicon glyphicon-remove gi-3x danger-color"/>
+                  <span className="sr-only">(str("Property is not satisified"))</span>
+                </div>
+              | Computing =>
+                <div>
+                  <span className="glyphicon glyphicon-hourglass gi-3x info-color"/>
+                  <span className="sr-only">(str("Computing..."))</span>
+                </div>
+              | Unknown =>
+                <div>
+                  <span className="glyphicon glyphicon-question-sign gi-3x info-color"/>
+                  <span className="sr-only">(str("Unknown verification status"))</span>
+                </div>
+              | _ =>
+                <div>
+                  <span className="glyphicon glyphicon-exclamation-sign gi-3x danger-color"/>
+                  <span className="sr-only">(str("Error"))</span>
+                </div>
+              }
+            )
             </div>
           </div>
         }
