@@ -40,6 +40,7 @@ type state = {
   nextId: int /* For automata and nodes */,
   show_help: bool,
   verification_status: verification_status,
+  show_debug: bool,
 };
 
 let selected_to_view: selected => GraphView.selected =

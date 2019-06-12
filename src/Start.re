@@ -45,6 +45,7 @@ let empty_state: App_Data.state = {
   reply: None,
   show_help: false,
   verification_status: Invalidated,
+  show_debug: false,
 };
 
 [@react.component]

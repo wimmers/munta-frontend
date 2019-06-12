@@ -66,9 +66,10 @@ let state = json => {
     vars: json |> field("vars", string),
     formula: json |> field("formula", string),
     App_Data.reply: None,
-    selected: None,
+    selected: List.length(automata) > 0 ? Some(List.length(automata) - 1) : None,
     show_help: false,
-    verification_status: Invalidated
+    verification_status: Invalidated,
+    show_debug: false,
   };
 };
 

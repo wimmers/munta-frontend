@@ -14,6 +14,72 @@ open Util;
 open App_Data;
 
 
+[@react.component]
+module CheckBox = {
+  let component = ReasonReact.statelessComponent("CheckBox");
+  let make = (~onCheck, ~onUncheck, ~desc, ~checked, _children) => {
+    ...component,
+    render: self => {
+      let className = "form-control btn btn-large btn-default";
+      let className =
+        className ++ (checked ? " active" : " btn-cursor disabled");
+      <div className="form-group col-md-3">
+        <label htmlFor="checkbox-button"> (str(desc)) </label>
+        <input
+          type_="button"
+          id="checkbox-button"
+          className
+          value=(checked ? "yes" : "no")
+          onClick=(_evt => checked ? onUncheck() : onCheck())
+        />
+      </div>;
+    },
+  };
+};
+
+[@react.component]
+module FormulaBox = {
+  let component = ReasonReact.statelessComponent("Formula");
+  let make = (~desc, ~placeholder, ~onChange, ~value, _children) => {
+    ...component,
+    render: _self =>
+      <div className="form-group col-md-3">
+        <label htmlFor="text-input"> (str(desc)) </label>
+        <input
+          type_="text"
+          id="text-input"
+          className="form-control"
+          cols=20
+          placeholder
+          onChange=(evt => onChange(valueFromEvent(evt)))
+          value
+        />
+      </div>,
+  };
+};
+
+[@react.component]
+module Declaration = {
+  let component = ReasonReact.statelessComponent("Declaration");
+  let make = (~desc, ~placeholder, ~onChange, ~value, _children) => {
+    ...component,
+    render: _self =>
+      <div className="form-group col-md-3">
+        <label htmlFor="text-box"> (str(desc)) </label>
+        <textarea
+          id="text-box"
+          className="form-control"
+          rows=3
+          cols=15
+          placeholder
+          onChange=(evt => onChange(valueFromEvent(evt)))
+          value
+        />
+      </div>,
+  };
+};
+
+
 let page_header = (show_help, onClick) =>
   <div className="page-header">
     <h1>
@@ -27,7 +93,7 @@ let page_header = (show_help, onClick) =>
     </h1>
   </div>;
 
-let help_text =
+let help_text = (set_debug, unset_debug, show_debug) =>
   <div>
     <h4>(str("How to use:"))</h4>
     <p>
@@ -43,7 +109,14 @@ let help_text =
       <li>(str("Click anywhere in the canvas and drag to move it around"))</li>
       <li>(str("Use the scroll wheel to zoom"))</li>
     </ul>
-    <p></p>
+    <p/>
+    <CheckBox
+      desc="Show debug output:"
+      checked=(show_debug)
+      key="show_debug_output_toggle_box"
+      onCheck=(_evt => set_debug())
+      onUncheck=(_evt => unset_debug())
+    />
   </div>;
 
 let init_node = v => {invariant: "", node: v};
@@ -113,6 +186,7 @@ let update_edge = (edges, edge) =>
 
 type action =
   | ToggleHelp
+  | ToggleDebugOutput
   | LoadState(state)
   | UpdateState(Parse.network_in)
   | StartQuery
@@ -142,71 +216,6 @@ type action =
   | SwapEdge(GraphView.node, GraphView.node, GraphView.edge);
 
 let component = ReasonReact.reducerComponent("App");
-
-[@react.component]
-module CheckBox = {
-  let component = ReasonReact.statelessComponent("CheckBox");
-  let make = (~onCheck, ~onUncheck, ~desc, ~checked, _children) => {
-    ...component,
-    render: self => {
-      let className = "form-control btn btn-large btn-default";
-      let className =
-        className ++ (checked ? " active" : " btn-cursor disabled");
-      <div className="form-group col-md-3">
-        <label htmlFor="checkbox-button"> (str(desc)) </label>
-        <input
-          type_="button"
-          id="checkbox-button"
-          className
-          value=(checked ? "yes" : "no")
-          onClick=(_evt => checked ? onUncheck() : onCheck())
-        />
-      </div>;
-    },
-  };
-};
-
-[@react.component]
-module FormulaBox = {
-  let component = ReasonReact.statelessComponent("Formula");
-  let make = (~desc, ~placeholder, ~onChange, ~value, _children) => {
-    ...component,
-    render: _self =>
-      <div className="form-group col-md-3">
-        <label htmlFor="text-input"> (str(desc)) </label>
-        <input
-          type_="text"
-          id="text-input"
-          className="form-control"
-          cols=20
-          placeholder
-          onChange=(evt => onChange(valueFromEvent(evt)))
-          value
-        />
-      </div>,
-  };
-};
-
-[@react.component]
-module Declaration = {
-  let component = ReasonReact.statelessComponent("Declaration");
-  let make = (~desc, ~placeholder, ~onChange, ~value, _children) => {
-    ...component,
-    render: _self =>
-      <div className="form-group col-md-3">
-        <label htmlFor="text-box"> (str(desc)) </label>
-        <textarea
-          id="text-box"
-          className="form-control"
-          rows=3
-          cols=15
-          placeholder
-          onChange=(evt => onChange(valueFromEvent(evt)))
-          value
-        />
-      </div>,
-  };
-};
 
 let key_of_node = v => string_of_int(v.node##id);
 
@@ -404,6 +413,7 @@ let make = (~initialState, _children) => {
       });
     switch (action) {
     | ToggleHelp => ReasonReact.Update({...state, show_help: !state.show_help})
+    | ToggleDebugOutput => ReasonReact.Update({...state, show_debug: !state.show_debug})
     | LoadState(s) => ReasonReact.Update(s)
     | UpdateState(s) => ReasonReact.Update(merge_state(state, s))
     | StartQuery => ReasonReact.Update({...state, reply: None, verification_status: Computing})
@@ -528,7 +538,7 @@ let make = (~initialState, _children) => {
     let compiled = state_out(state) |> Rename.parse_compile;
     <div className="container">
       (page_header(state.show_help, (_evt => send(ToggleHelp))))
-      (state.show_help ? help_text : ReasonReact.null)
+      (state.show_help ? help_text(_ => send(ToggleDebugOutput), _ => send(ToggleDebugOutput), state.show_debug) : ReasonReact.null)
       <div>
         (
           mk_render(state =>
@@ -740,14 +750,18 @@ let make = (~initialState, _children) => {
           </div>
         }
       )
-      <div className="output">
-        <label htmlFor="compilation-output">
-          (str("Result of parsing/compilation:"))
-        </label>
-        <pre id="compiliation-output">
-          (state_out(state) |> Print_munta.rename_and_print |> str)
-        </pre>
-      </div>
+      (
+        state.show_debug ?
+        <div className="output">
+          <label htmlFor="compilation-output">
+            (str("Result of parsing/compilation:"))
+          </label>
+          <pre id="compiliation-output">
+            (state_out(state) |> Print_munta.rename_and_print |> str)
+          </pre>
+        </div> :
+        <div><p/></div>
+      )
     </div>;
   },
 };
