@@ -1,11 +1,11 @@
 self.__precacheManifest = [
   {
-    "revision": "fa2772327f55d8198301fdb8bcfc8158",
-    "url": "./static/media/glyphicons-halflings-regular.fa277232.woff"
+    "revision": "e18bbf611f2a2e43afc071aa2f4e1512",
+    "url": "./static/media/glyphicons-halflings-regular.e18bbf61.ttf"
   },
   {
-    "revision": "ecff894cec0b1a5cb92b",
-    "url": "./static/css/main.728f7c8d.chunk.css"
+    "revision": "56eb72565aa0648b6d5f",
+    "url": "./static/css/main.c577b836.chunk.css"
   },
   {
     "revision": "4faa871233caa524572a",
@@ -24,12 +24,12 @@ self.__precacheManifest = [
     "url": "./static/media/glyphicons-halflings-regular.448c34a5.woff2"
   },
   {
-    "revision": "e18bbf611f2a2e43afc071aa2f4e1512",
-    "url": "./static/media/glyphicons-halflings-regular.e18bbf61.ttf"
+    "revision": "fa2772327f55d8198301fdb8bcfc8158",
+    "url": "./static/media/glyphicons-halflings-regular.fa277232.woff"
   },
   {
-    "revision": "ecff894cec0b1a5cb92b",
-    "url": "./static/js/main.ecff894c.chunk.js"
+    "revision": "56eb72565aa0648b6d5f",
+    "url": "./static/js/main.56eb7256.chunk.js"
   },
   {
     "revision": "89889688147bd7575d6327160d64e760",
@@ -52,7 +52,7 @@ self.__precacheManifest = [
     "url": "./static/media/light_switch.7e137d9c.muntax"
   },
   {
-    "revision": "34049256e059d0dc2880617afdb5f737",
+    "revision": "61e2345902dbb9e40b347b9478219ab9",
     "url": "./index.html"
   }
 ];
