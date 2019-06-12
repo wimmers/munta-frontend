@@ -27,6 +27,7 @@ type verification_status =
   | Invalidated
   | Computing
   | Unknown
+  | Failed
   | Rejected
   | Verified;
 

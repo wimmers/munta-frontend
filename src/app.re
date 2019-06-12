@@ -292,7 +292,7 @@ let renderInitial = (~send, ~state: single_state) =>
 
 let port = 3069;
 
-let send_query = (~onSend, ~onReceive, ~query, ()) => {
+let send_query = (~onSend, ~onReceive, ~onFail, ~query, ()) => {
   onSend();
   Js.Promise.(
     Fetch.fetchWithInit(
@@ -305,15 +305,14 @@ let send_query = (~onSend, ~onReceive, ~query, ()) => {
     )
     |> then_(Fetch.Response.text)
     |> then_(text => onReceive(text) |> resolve)
-    |> catch(_error =>
-         Util.alert("Could not connect to verification server!") |> resolve
-       )
+    |> catch(_error => onFail() |> resolve)
   )
   |> ignore;
 };
 
 let send_browser_query = (~onSend, ~onReceive, ~query, ()) => {
-  let promise = Js.Promise.make((~resolve, ~reject) => resolve(. query()))
+  let promise = Js.Promise.make(
+    (~resolve, ~reject) => ignore(Js.Global.setTimeout(() => resolve(. query()), 1)))
   onSend();
   Js.Promise.(
     promise
@@ -357,6 +356,8 @@ let status_from_reply = s => {
   Verified :
   Js.String.includes("Property is not satisfied", s) ?
   Rejected :
+  s == "Could not connect to verification server!" ?
+  Failed :
   Unknown
 };
 
@@ -684,6 +685,7 @@ let make = (~initialState, _children) => {
                         |> Serialize.state
                         |> Json.stringify
                       ),
+                      ~onFail=(_ => {Util.alert("Could not connect to verification server!"); send(ReceiveReply("Could not connect to verification server!"))}),
                       (),
                     )
                 )
