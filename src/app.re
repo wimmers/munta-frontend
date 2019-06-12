@@ -109,6 +109,13 @@ let help_text = (set_debug, unset_debug, show_debug) =>
       <li>(str("Click anywhere in the canvas and drag to move it around"))</li>
       <li>(str("Use the scroll wheel to zoom"))</li>
     </ul>
+    <p>
+      (str("Notes"))
+    </p>
+    <ul>
+      <li>(str("After clicking on one of the verification buttons, an icon on the right indicates the verification status"))</li>
+      <li>(str("To see further information about the verification result, scroll down"))</li>
+    </ul>
     <p/>
     <CheckBox
       desc="Show debug output:"
