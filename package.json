@@ -11,6 +11,7 @@
     "bs-fetch": "^0.3.1",
     "bs-platform": "^5.0.4",
     "bs-react-dropzone": "^0.3.3",
+    "bs-zarith": "^1.0.1",
     "d3": "^5.9.2",
     "gh-pages": "^2.0.1",
     "js-file-download": "^0.4.5",

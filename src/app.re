@@ -13,6 +13,36 @@ open Util;
 
 open App_Data;
 
+open Simple_Model_Checker;
+
+let convert_run_print = (dc, json, ()) =>
+  switch (Model_Checker.convert_run(dc, json, ())) {
+  | Result(s) => s
+  | Error(es) => String.concat("\n", es)
+  };
+
+let rec option_first = xs =>
+  switch xs {
+  | [None, ...xs] => option_first(xs)
+  | [Some(x), ...xs] => x
+  };
+
+let map_option = (f, x) =>
+  switch x {
+  | None => None
+  | Some(x) => Some(f(x))
+  }
+
+let (||>) = (x, f) => map_option(f, x);
+
+let rec json_to_isa = json => {
+  option_first([
+  Js.Json.decodeString(json) ||> s => Model_Checker.Stringa(Model_Checker.explode(s)),
+  Js.Json.decodeArray(json) ||> a => Model_Checker.Arrayb(a |> Array.to_list |> List.map(json_to_isa)),
+  Js.Json.decodeObject(json) ||> obj => Model_Checker.Object(obj |> Js.Dict.entries |> Array.to_list |> List.map(((x, y)) => (Model_Checker.explode(x), json_to_isa(y)))),
+  /*Js.Json.decodeNumber(json) ||> i => Model_Checker.Int(int_of_float(i))*/
+  Js.Json.decodeNumber(json) ||> i => Model_Checker.Nata(i |> int_of_float |> Z.Int.of_int |> x => Model_Checker.nat_of_integer(x))
+  ])};
 
 [@react.component]
 module CheckBox = {
@@ -692,7 +722,10 @@ let make = (~initialState, _children) => {
                         |> Serialize.state
                         |> Json.stringify
                       ),
-                      ~onFail=(_ => {Util.alert("Could not connect to verification server!"); send(ReceiveReply("Could not connect to verification server!"))}),
+                      ~onFail=(_ => {
+                        Util.alert("Could not connect to verification server!");
+                        send(ReceiveReply("Could not connect to verification server!"))
+                      }),
                       (),
                     )
                 )
@@ -706,7 +739,7 @@ let make = (~initialState, _children) => {
                     send_browser_query(
                       ~onSend=() => send(StartQuery),
                       ~onReceive=s => send(ReceiveReply(s)),
-                      ~query=Checker.convert_run_print(r),
+                      ~query=(state |> Serialize.state |> json_to_isa |> convert_run_print(false)),
                      ()
                     )
                 )

@@ -10,7 +10,8 @@
     "bs-fetch",
     "bs-bn.js",
     "@glennsl/bs-json",
-    "bs-react-dropzone"
+    "bs-react-dropzone",
+    "bs-zarith"
   ],
   "reason": {
     "react-jsx": 2
