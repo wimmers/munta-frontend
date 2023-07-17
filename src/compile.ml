@@ -118,7 +118,7 @@ let check_formula automata clocks vars =
     | EX f -> check f
     | EG f -> check f
     | AX f -> check f
-    | EG f -> check f
+    | AG f -> check f
     | Leadsto (f, g) -> check f <|> check g >>= fun _ -> return ()
 
 let compile_bexp clocks vars =
